@@ -9,24 +9,25 @@ import java.io.IOException;
 public class TerminalHelper {
 
     public static void open(String title, CommandControl cc) throws Exception {
-        var command = cc.prepareTerminalOpen();
+        var command = cc.prepareTerminalOpen(title);
         open(title, command);
     }
 
     public static void open(String title, String command) throws Exception {
-        if (command.contains("\n") || command.contains(" ") || command.contains("\"") || command.contains("'")) {
-            command = ScriptHelper.createLocalExecScript(command);
-        }
-
         var type = AppPrefs.get().terminalType().getValue();
         if (type == null) {
             throw new IllegalStateException(AppI18n.get("noTerminalSet"));
         }
 
+        command = ScriptHelper.createLocalExecScript(command);
+
         try {
             type.launch(title, command, false);
         } catch (Exception ex) {
-            throw new IOException("Unable to launch terminal " + type.toTranslatedString() + ". Maybe try to use a different one in the settings.", ex);
+            throw new IOException(
+                    "Unable to launch terminal " + type.toTranslatedString() + ": " + ex.getMessage()
+                            + ". Maybe try to use a different one in the settings.",
+                    ex);
         }
     }
 }

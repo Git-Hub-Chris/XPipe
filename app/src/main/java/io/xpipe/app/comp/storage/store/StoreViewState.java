@@ -2,21 +2,20 @@ package io.xpipe.app.comp.storage.store;
 
 import io.xpipe.app.comp.storage.StorageFilter;
 import io.xpipe.app.issue.ErrorEvent;
-import io.xpipe.app.storage.DataSourceCollection;
 import io.xpipe.app.storage.DataStorage;
 import io.xpipe.app.storage.DataStoreEntry;
 import io.xpipe.app.storage.StorageListener;
 import javafx.application.Platform;
-import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.value.ObservableBooleanValue;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 public class StoreViewState {
 
@@ -28,10 +27,6 @@ public class StoreViewState {
             FXCollections.observableList(new CopyOnWriteArrayList<>());
     private final ObservableList<StoreEntryWrapper> shownEntries =
             FXCollections.observableList(new CopyOnWriteArrayList<>());
-
-    private final ObservableBooleanValue empty = Bindings.createBooleanBinding(() -> {
-        return allEntries.stream().allMatch(storeEntryWrapper -> !storeEntryWrapper.getEntry().getConfiguration().isRenameable());
-    }, allEntries);
 
     private StoreViewState() {
         try {
@@ -61,25 +56,21 @@ public class StoreViewState {
 
         DataStorage.get().addListener(new StorageListener() {
             @Override
-            public void onStoreAdd(DataStoreEntry entry) {
+            public void onStoreAdd(DataStoreEntry... entry) {
+                var l = Arrays.stream(entry).map(StoreEntryWrapper::new).toList();
                 Platform.runLater(() -> {
-                    var sg = new StoreEntryWrapper(entry);
-                    allEntries.add(sg);
+                    allEntries.addAll(l);
                 });
             }
 
             @Override
-            public void onStoreRemove(DataStoreEntry entry) {
+            public void onStoreRemove(DataStoreEntry... entry) {
+                var a = Arrays.stream(entry).collect(Collectors.toSet());
+                var l = StoreViewState.get().getAllEntries().stream().filter(storeEntryWrapper -> a.contains(storeEntryWrapper.getEntry())).toList();
                 Platform.runLater(() -> {
-                    allEntries.removeIf(e -> e.getEntry().equals(entry));
+                    allEntries.removeAll(l);
                 });
             }
-
-            @Override
-            public void onCollectionAdd(DataSourceCollection collection) {}
-
-            @Override
-            public void onCollectionRemove(DataSourceCollection collection) {}
         });
     }
 
@@ -106,13 +97,5 @@ public class StoreViewState {
 
     public ObservableList<StoreEntryWrapper> getShownEntries() {
         return shownEntries;
-    }
-
-    public boolean isEmpty() {
-        return empty.get();
-    }
-
-    public ObservableBooleanValue emptyProperty() {
-        return empty;
     }
 }

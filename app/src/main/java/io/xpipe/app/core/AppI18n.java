@@ -1,5 +1,6 @@
 package io.xpipe.app.core;
 
+import io.xpipe.app.comp.base.ModalOverlayComp;
 import io.xpipe.app.ext.PrefsChoiceValue;
 import io.xpipe.app.fxcomps.impl.FancyTooltipAugment;
 import io.xpipe.app.issue.ErrorEvent;
@@ -40,7 +41,7 @@ public class AppI18n {
     private Map<String, String> translations;
     private Map<String, String> markdownDocumentations;
     private PrettyTime prettyTime;
-private static AppI18n INSTANCE = new AppI18n();
+    private static final AppI18n INSTANCE = new AppI18n();
 
     public static void init() {
         var i = INSTANCE;
@@ -59,7 +60,7 @@ private static AppI18n INSTANCE = new AppI18n();
     }
 
     public static AppI18n getInstance() {
-        return ((AppI18n) INSTANCE);
+        return INSTANCE;
     }
 
     public static StringBinding readableDuration(String s, ObservableValue<Instant> instant) {
@@ -73,7 +74,8 @@ private static AppI18n INSTANCE = new AppI18n();
                         return "null";
                     }
 
-                    return op.apply(getInstance().prettyTime.format(instant.getValue().minus(Duration.ofSeconds(1))));
+                    return op.apply(
+                            getInstance().prettyTime.format(instant.getValue().minus(Duration.ofSeconds(1))));
                 },
                 instant);
     }
@@ -130,6 +132,7 @@ private static AppI18n INSTANCE = new AppI18n();
         for (Class<?> caller : callers) {
             if (caller.equals(CallingClass.class)
                     || caller.equals(ModuleHelper.class)
+                    || caller.equals(ModalOverlayComp.class)
                     || caller.equals(AppI18n.class)
                     || caller.equals(FancyTooltipAugment.class)
                     || caller.equals(PrefsChoiceValue.class)
@@ -209,9 +212,9 @@ private static AppI18n INSTANCE = new AppI18n();
                 AtomicInteger lineCounter = new AtomicInteger();
                 var simpleName = FilenameUtils.getExtension(module.getName());
                 String defaultPrefix = simpleName.equals("app") ? "app." : simpleName + ".";
-                Files.walkFileTree(basePath, new SimpleFileVisitor<Path>() {
+                Files.walkFileTree(basePath, new SimpleFileVisitor<>() {
                     @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                         if (!matchesLocale(file)) {
                             return FileVisitResult.CONTINUE;
                         }
@@ -227,7 +230,7 @@ private static AppI18n INSTANCE = new AppI18n();
                             props.forEach((key, value) -> {
                                 var hasPrefix = key.toString().contains(".");
                                 var usedPrefix = hasPrefix ? "" : defaultPrefix;
-                                translations.put(usedPrefix + key.toString(), value.toString());
+                                translations.put(usedPrefix + key, value.toString());
                                 lineCounter.incrementAndGet();
                             });
                         } catch (IOException ex) {
@@ -252,9 +255,9 @@ private static AppI18n INSTANCE = new AppI18n();
                 }
 
                 var moduleName = FilenameUtils.getExtension(module.getName());
-                Files.walkFileTree(basePath, new SimpleFileVisitor<Path>() {
+                Files.walkFileTree(basePath, new SimpleFileVisitor<>() {
                     @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                         if (!matchesLocale(file)) {
                             return FileVisitResult.CONTINUE;
                         }
@@ -263,10 +266,13 @@ private static AppI18n INSTANCE = new AppI18n();
                             return FileVisitResult.CONTINUE;
                         }
 
-                        var name = file.getFileName().toString().substring(0, file.getFileName().toString().lastIndexOf("_"));
+                        var name = file.getFileName()
+                                .toString()
+                                .substring(0, file.getFileName().toString().lastIndexOf("_"));
                         try (var in = Files.newInputStream(file)) {
                             var usedPrefix = moduleName + ":";
-                            markdownDocumentations.put(usedPrefix + name, new String(in.readAllBytes(), StandardCharsets.UTF_8));
+                            markdownDocumentations.put(
+                                    usedPrefix + name, new String(in.readAllBytes(), StandardCharsets.UTF_8));
                         } catch (IOException ex) {
                             ErrorEvent.fromThrowable(ex).omitted(true).build().handle();
                         }

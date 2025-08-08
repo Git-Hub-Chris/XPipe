@@ -41,11 +41,15 @@ apply from: "$rootDir/gradle/gradle_scripts/lombok.gradle"
 apply from: "$rootDir/gradle/gradle_scripts/extension_test.gradle"
 
 dependencies {
-    compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: "2.13.0"
+    compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: "2.15.2"
     compileOnly project(':core')
     compileOnly project(':beacon')
     compileOnly project(':app')
     compileOnly 'net.synedra:validatorfx:0.3.1'
+    compileOnly ('io.github.mkpaz:atlantafx-base:2.0.1') {
+        exclude group: 'org.openjfx', module: 'javafx-base'
+        exclude group: 'org.openjfx', module: 'javafx-controls'
+    }
 
     if (project != project(':base')) {
         compileOnly project(':base')

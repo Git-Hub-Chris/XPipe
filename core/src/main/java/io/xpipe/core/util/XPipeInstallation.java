@@ -123,7 +123,7 @@ public class XPipeInstallation {
         }
     }
 
-    public static String getLocalInstallationBasePathForCLI(String cliExecutable) throws Exception {
+    public static String getLocalInstallationBasePathForCLI(String cliExecutable) {
         var defaultInstallation = getLocalDefaultInstallationBasePath(true);
 
         // Can be empty in development mode
@@ -156,13 +156,13 @@ public class XPipeInstallation {
 
     public static String queryInstallationVersion(ShellControl p, String exec) throws Exception {
         try (CommandControl c = p.command(List.of(exec, "version")).start()) {
-            return c.readOrThrow();
+            return c.readStdoutOrThrow();
         } catch (ProcessOutputException ex) {
             return "?";
         }
     }
 
-    public static String getInstallationExecutable(ShellControl p, String installation) throws Exception {
+    public static String getInstallationExecutable(ShellControl p, String installation) {
         var executable = getDaemonExecutablePath(p.getOsType());
         var file = FileNames.join(installation, executable);
         return file;
@@ -170,7 +170,7 @@ public class XPipeInstallation {
 
     public static String getDataBasePath(ShellControl p) throws Exception {
         if (p.getOsType().equals(OsType.WINDOWS)) {
-            var base = p.executeStringSimpleCommand(p.getShellDialect().getPrintVariableCommand("userprofile"));
+            var base = p.executeSimpleStringCommand(p.getShellDialect().getPrintVariableCommand("userprofile"));
             return FileNames.join(base, ".xpipe");
         } else {
             return FileNames.join("~", ".xpipe");
@@ -206,36 +206,35 @@ public class XPipeInstallation {
             return customHome;
         }
 
-        String path = null;
+        String path;
         if (OsType.getLocal().equals(OsType.WINDOWS)) {
             var base = System.getenv("LOCALAPPDATA");
-            path = FileNames.join(base, "X-Pipe");
+            path = FileNames.join(base, "XPipe");
         } else if (OsType.getLocal().equals(OsType.LINUX)) {
             path = "/opt/xpipe";
         } else {
-            path = "/Applications/X-Pipe.app";
+            path = "/Applications/XPipe.app";
         }
 
         return path;
     }
 
-    public static String getDefaultInstallationBasePath(ShellControl p, boolean acceptPortable)
-            throws Exception {
+    public static String getDefaultInstallationBasePath(ShellControl p, boolean acceptPortable) throws Exception {
         if (acceptPortable) {
-            var customHome = p.executeStringSimpleCommand(p.getShellDialect().getPrintVariableCommand("XPIPE_HOME"));
+            var customHome = p.executeSimpleStringCommand(p.getShellDialect().getPrintVariableCommand("XPIPE_HOME"));
             if (!customHome.isEmpty()) {
                 return customHome;
             }
         }
 
-        String path = null;
+        String path;
         if (p.getOsType().equals(OsType.WINDOWS)) {
-            var base = p.executeStringSimpleCommand(p.getShellDialect().getPrintVariableCommand("LOCALAPPDATA"));
-            path = FileNames.join(base, "X-Pipe");
+            var base = p.executeSimpleStringCommand(p.getShellDialect().getPrintVariableCommand("LOCALAPPDATA"));
+            path = FileNames.join(base, "XPipe");
         } else if (p.getOsType().equals(OsType.LINUX)) {
             path = "/opt/xpipe";
         } else {
-            path = "/Applications/X-Pipe.app";
+            path = "/Applications/XPipe.app";
         }
 
         return path;

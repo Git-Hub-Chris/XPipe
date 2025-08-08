@@ -17,12 +17,12 @@ public class FileEditAction implements ActionProvider {
         FileStore store;
 
         @Override
-        public boolean requiresPlatform() {
+        public boolean requiresJavaFXPlatform() {
             return false;
         }
 
         @Override
-        public void execute() throws Exception {
+        public void execute() {
             if (store.getFileSystem().equals(new LocalStore())) {
                 FileOpener.openInTextEditor(store.getPath());
             }
@@ -44,7 +44,7 @@ public class FileEditAction implements ActionProvider {
             }
 
             @Override
-            public boolean isApplicable(FileStore o) throws Exception {
+            public boolean isApplicable(FileStore o) {
                 return o.getFlow().equals(DataFlow.INPUT_OUTPUT);
             }
 

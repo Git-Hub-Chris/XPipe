@@ -1,9 +1,14 @@
 package io.xpipe.core.impl;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class FileNames {
+
+    public static String quoteIfNecessary(String n) {
+        return n.contains(" ") ? "\"" + n + "\"" : n;
+    }
 
     public static String toDirectory(String path) {
         if (path.endsWith("/") || path.endsWith("\\")) {
@@ -29,6 +34,10 @@ public class FileNames {
     }
 
     public static String getFileName(String file) {
+        if (file == null) {
+            return null;
+        }
+
         if (file.isEmpty()) {
             return "";
         }
@@ -37,12 +46,45 @@ public class FileNames {
         if (split.length == 0) {
             return "";
         }
-        var components =  Arrays.stream(split).filter(s -> !s.isEmpty()).toList();
+        var components = Arrays.stream(split).filter(s -> !s.isEmpty()).toList();
         if (components.size() == 0) {
             return "";
         }
 
         return components.get(components.size() - 1);
+    }
+
+    public static List<String> splitHierarchy(String file) {
+        if (file.isEmpty()) {
+            return List.of();
+        }
+
+        file = file + "/";
+        var list = new ArrayList<String>();
+        int lastElementStart = 0;
+        for (int i = 0; i < file.length(); i++) {
+            if (file.charAt(i) == '\\' || file.charAt(i) == '/') {
+                if (i - lastElementStart > 0) {
+                    list.add(file.substring(0, i));
+                }
+
+                lastElementStart = i + 1;
+            }
+        }
+        return list;
+    }
+
+    public static String getBaseName(String file) {
+        if (file == null || file.isEmpty()) {
+            return null;
+        }
+
+        var name = FileNames.getFileName(file);
+        var split = file.lastIndexOf(".");
+        if (split == -1) {
+            return name;
+        }
+        return name.substring(0, split);
     }
 
     public static String getExtension(String file) {
@@ -68,7 +110,7 @@ public class FileNames {
             return false;
         }
 
-        if (!file.startsWith("/") && !file.startsWith("~") && !file.matches("^\\w:.*")) {
+        if (!file.startsWith("\\") && !file.startsWith("/") && !file.startsWith("~") && !file.matches("^\\w:.*")) {
             return false;
         }
 
@@ -92,7 +134,7 @@ public class FileNames {
     }
 
     public static String relativize(String from, String to) {
-       return normalize(to).substring(normalize(from).length());
+        return normalize(to).substring(normalize(from).length());
     }
 
     public static String normalize(String file) {
@@ -107,7 +149,7 @@ public class FileNames {
 
     public static String toUnix(String file) {
         var joined = String.join("/", split(file));
-        var prefix =  file.startsWith("/") ? "/" : "";
+        var prefix = file.startsWith("/") ? "/" : "";
         var suffix = file.endsWith("/") || file.endsWith("\\") ? "/" : "";
         return prefix + joined + suffix;
     }

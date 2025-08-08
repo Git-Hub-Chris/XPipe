@@ -5,6 +5,7 @@ import io.xpipe.app.ext.ActionProvider;
 import io.xpipe.app.storage.DataStorage;
 import io.xpipe.app.storage.DataStoreEntry;
 import io.xpipe.core.store.DataStore;
+import io.xpipe.core.store.FixedHierarchyStore;
 import javafx.beans.value.ObservableValue;
 import lombok.Value;
 
@@ -16,19 +17,19 @@ public class DeleteStoreChildrenAction implements ActionProvider {
         DataStoreEntry store;
 
         @Override
-        public boolean requiresPlatform() {
+        public boolean requiresJavaFXPlatform() {
             return false;
         }
 
         @Override
-        public void execute() throws Exception {
+        public void execute() {
             DataStorage.get().deleteChildren(store, true);
         }
     }
 
     @Override
     public DataStoreCallSite<?> getDataStoreCallSite() {
-        return new DataStoreCallSite<DataStore>() {
+        return new DataStoreCallSite<>() {
 
             @Override
             public boolean isMajor() {
@@ -46,8 +47,11 @@ public class DeleteStoreChildrenAction implements ActionProvider {
             }
 
             @Override
-            public boolean isApplicable(DataStore o) throws Exception {
-                return DataStorage.get().getStoreChildren(DataStorage.get().getStoreEntry(o),true).size() > 1;
+            public boolean isApplicable(DataStore o) {
+                return !(o instanceof FixedHierarchyStore) && DataStorage.get()
+                                .getStoreChildren(DataStorage.get().getStoreEntry(o), true, true)
+                                .size()
+                        > 1;
             }
 
             @Override

@@ -5,6 +5,7 @@ import io.xpipe.core.impl.FileNames;
 import io.xpipe.core.impl.LocalStore;
 import io.xpipe.core.process.OsType;
 import io.xpipe.core.store.ConnectionFileSystem;
+import io.xpipe.core.store.FileKind;
 import io.xpipe.core.store.FileSystem;
 
 import java.nio.file.Files;
@@ -21,20 +22,22 @@ public class FileSystemHelper {
         }
 
         ConnectionFileSystem fileSystem = (ConnectionFileSystem) model.getFileSystem();
-        var current = !(model.getStore().getValue() instanceof LocalStore)
+        var current = !model.isLocal()
                 ? fileSystem
                         .getShellControl()
-                        .executeStringSimpleCommand(
+                        .executeSimpleStringCommand(
                                 fileSystem.getShellControl().getShellDialect().getPrintWorkingDirectoryCommand())
                 : fileSystem
                         .getShell()
                         .get()
                         .getOsType()
                         .getHomeDirectory(fileSystem.getShell().get());
-        return FileSystemHelper.resolveDirectoryPath(model, current);
+        var r = resolveDirectoryPath(model, evaluatePath(model, adjustPath(model, current)));
+        validateDirectoryPath(model, r);
+        return r;
     }
 
-    public static String resolveDirectoryPath(OpenFileSystemModel model, String path) throws Exception {
+    public static String adjustPath(OpenFileSystemModel model, String path) {
         if (path == null) {
             return null;
         }
@@ -58,18 +61,63 @@ public class FileSystemHelper {
             return path + "\\";
         }
 
-        var normalized = shell.get()
-                .getShellDialect()
-                .normalizeDirectory(shell.get(), path)
-                .readOrThrow();
+        return path;
+    }
 
-        if (!model.getFileSystem().directoryExists(normalized)) {
-            throw new IllegalArgumentException(String.format("Directory %s does not exist", normalized));
+    public static String evaluatePath(OpenFileSystemModel model, String path) throws Exception {
+        if (path == null) {
+            return null;
         }
 
-        model.getFileSystem().directoryAccessible(normalized);
+        var shell = model.getFileSystem().getShell();
+        if (shell.isEmpty()) {
+            return path;
+        }
 
-        return FileNames.toDirectory(normalized);
+        return shell.get()
+                .getShellDialect()
+                .evaluateExpression(shell.get(), path)
+                .readStdoutOrThrow();
+    }
+
+    public static String resolveDirectoryPath(OpenFileSystemModel model, String path) throws Exception {
+        if (path == null) {
+            return null;
+        }
+
+        var shell = model.getFileSystem().getShell();
+        if (shell.isEmpty()) {
+            return path;
+        }
+
+        var resolved = shell.get()
+                .getShellDialect()
+                .resolveDirectory(shell.get(), path)
+                .withWorkingDirectory(model.getCurrentPath().get())
+                .readStdoutOrThrow();
+
+        if (!FileNames.isAbsolute(resolved)) {
+            throw new IllegalArgumentException(String.format("Directory %s is not absolute", resolved));
+        }
+
+        return FileNames.toDirectory(resolved);
+    }
+
+    public static void validateDirectoryPath(OpenFileSystemModel model, String path) throws Exception {
+        if (path == null) {
+            return;
+        }
+
+        var shell = model.getFileSystem().getShell();
+        if (shell.isEmpty()) {
+            return;
+        }
+
+        if (!model.getFileSystem().directoryExists(path)) {
+            throw new IllegalArgumentException(String.format("Directory %s does not exist", path));
+        }
+
+        model.getFileSystem().directoryAccessible(path);
     }
 
     private static FileSystem localFileSystem;
@@ -77,18 +125,18 @@ public class FileSystemHelper {
     public static FileSystem.FileEntry getLocal(Path file) throws Exception {
         if (localFileSystem == null) {
             localFileSystem = new LocalStore().createFileSystem();
+            localFileSystem.open();
         }
 
         return new FileSystem.FileEntry(
                 localFileSystem,
                 file.toString(),
                 Files.getLastModifiedTime(file).toInstant(),
-                Files.isDirectory(file),
                 Files.isHidden(file),
                 Files.isExecutable(file),
                 Files.size(file),
-                null
-        );
+                null,
+                Files.isDirectory(file) ? FileKind.DIRECTORY : FileKind.FILE);
     }
 
     public static void dropLocalFilesInto(FileSystem.FileEntry entry, List<Path> files) {
@@ -108,7 +156,7 @@ public class FileSystemHelper {
         }
     }
 
-    public static void delete(List<FileSystem.FileEntry> files) throws Exception {
+    public static void delete(List<FileSystem.FileEntry> files) {
         if (files.size() == 0) {
             return;
         }
@@ -163,16 +211,15 @@ public class FileSystemHelper {
             return;
         }
 
-        if (source.isDirectory()) {
+        if (source.getKind() == FileKind.DIRECTORY) {
             var directoryName = FileNames.getFileName(source.getPath());
             flatFiles.put(source, directoryName);
 
             var baseRelative = FileNames.toDirectory(FileNames.getParent(source.getPath()));
-            try (var stream = source.getFileSystem().listFilesRecursively(source.getPath())) {
-                stream.forEach(fileEntry -> {
-                    flatFiles.put(fileEntry, FileNames.toUnix(FileNames.relativize(baseRelative, fileEntry.getPath())));
-                });
-            }
+            List<FileSystem.FileEntry> list = source.getFileSystem().listFilesRecursively(source.getPath());
+            list.forEach(fileEntry -> {
+                flatFiles.put(fileEntry, FileNames.toUnix(FileNames.relativize(baseRelative, fileEntry.getPath())));
+            });
         } else {
             flatFiles.put(source, FileNames.getFileName(source.getPath()));
         }
@@ -184,7 +231,7 @@ public class FileSystemHelper {
                 throw new IllegalStateException();
             }
 
-            if (sourceFile.isDirectory()) {
+            if (sourceFile.getKind() == FileKind.DIRECTORY) {
                 target.getFileSystem().mkdirs(targetFile);
             } else {
                 try (var in = sourceFile.getFileSystem().openInput(sourceFile.getPath());

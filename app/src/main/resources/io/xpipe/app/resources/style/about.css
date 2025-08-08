@@ -16,12 +16,13 @@
 -fx-graphic-text-gap: 0.8em;
 }
 
-.about-tab .information {
--fx-spacing: 2em;
+.properties-comp .tile > * {
+ -fx-padding: 0.6em 0 0.6em 0;
 }
 
-.about-tab {
--fx-padding: 1.3em;
+
+.troubleshoot-tab .separator {
+-fx-padding: 0.3em 0 0.3em 0;
 }
 
 .about-tab .update-check {

@@ -1,16 +1,19 @@
 package io.xpipe.core.process;
 
+import io.xpipe.core.impl.FileNames;
+
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public interface OsType {
+public sealed interface OsType permits OsType.Windows, OsType.Linux, OsType.MacOs {
 
     Windows WINDOWS = new Windows();
     Linux LINUX = new Linux();
     MacOs MACOS = new MacOs();
 
-    public static OsType getLocal() {
+    static OsType getLocal() {
         String osName = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH);
         if ((osName.contains("mac")) || (osName.contains("darwin"))) {
             return MACOS;
@@ -23,7 +26,26 @@ public interface OsType {
         }
     }
 
+    default String getXPipeHomeDirectory(ShellControl pc) throws Exception {
+        return FileNames.join(getHomeDirectory(pc), ".xpipe");
+    }
+
+    default String getSystemIdFile(ShellControl pc) throws Exception {
+        var home = getXPipeHomeDirectory(pc);
+
+        // Sometimes the home variable is not set or empty
+        if (home == null || home.isBlank()) {
+            return null;
+        }
+
+        return FileNames.join(home, "system_id");
+    }
+
+    List<String> determineInterestingPaths(ShellControl pc) throws Exception;
+
     String getHomeDirectory(ShellControl pc) throws Exception;
+
+    String getFileSystemSeparator();
 
     String getName();
 
@@ -33,12 +55,27 @@ public interface OsType {
 
     String determineOperatingSystemName(ShellControl pc) throws Exception;
 
-    static class Windows implements OsType {
+    final class Windows implements OsType {
+
+        @Override
+        public List<String> determineInterestingPaths(ShellControl pc) throws Exception {
+            var home = getHomeDirectory(pc);
+            return List.of(
+                    home,
+                    FileNames.join(home, "Documents"),
+                    FileNames.join(home, "Downloads"),
+                    FileNames.join(home, "Desktop"));
+        }
 
         @Override
         public String getHomeDirectory(ShellControl pc) throws Exception {
-            return pc.executeStringSimpleCommand(
+            return pc.executeSimpleStringCommand(
                     pc.getShellDialect().getPrintEnvironmentVariableCommand("USERPROFILE"));
+        }
+
+        @Override
+        public String getFileSystemSeparator() {
+            return "\\";
         }
 
         @Override
@@ -48,27 +85,27 @@ public interface OsType {
 
         @Override
         public String getTempDirectory(ShellControl pc) throws Exception {
-            return pc.executeStringSimpleCommand(pc.getShellDialect().getPrintEnvironmentVariableCommand("TEMP"));
+            return pc.executeSimpleStringCommand(pc.getShellDialect().getPrintEnvironmentVariableCommand("TEMP"));
         }
 
         @Override
         public Map<String, String> getProperties(ShellControl pc) throws Exception {
             try (CommandControl c = pc.command("systeminfo").start()) {
-                var text = c.readOrThrow();
+                var text = c.readStdoutOrThrow();
                 return PropertiesFormatsParser.parse(text, ":");
             }
         }
 
         @Override
-        public String determineOperatingSystemName(ShellControl pc) throws Exception {
+        public String determineOperatingSystemName(ShellControl pc) {
             try {
-                return pc.executeStringSimpleCommand("wmic os get Caption")
+                return pc.executeSimpleStringCommand("wmic os get Caption")
                                 .lines()
                                 .skip(1)
                                 .collect(Collectors.joining())
                                 .trim()
                         + " "
-                        + pc.executeStringSimpleCommand("wmic os get Version")
+                        + pc.executeSimpleStringCommand("wmic os get Version")
                                 .lines()
                                 .skip(1)
                                 .collect(Collectors.joining())
@@ -80,15 +117,27 @@ public interface OsType {
         }
     }
 
-    static class Linux implements OsType {
+    final class Linux implements OsType {
 
         @Override
-        public String getHomeDirectory(ShellControl pc) throws Exception {
-            return pc.executeStringSimpleCommand(pc.getShellDialect().getPrintEnvironmentVariableCommand("HOME"));
+        public List<String> determineInterestingPaths(ShellControl pc) throws Exception {
+            var home = getHomeDirectory(pc);
+            return List.of(
+                    home, FileNames.join(home, "Downloads"), FileNames.join(home, "Documents"), "/etc", "/tmp", "/var");
         }
 
         @Override
-        public String getTempDirectory(ShellControl pc) throws Exception {
+        public String getHomeDirectory(ShellControl pc) throws Exception {
+            return pc.executeSimpleStringCommand(pc.getShellDialect().getPrintEnvironmentVariableCommand("HOME"));
+        }
+
+        @Override
+        public String getFileSystemSeparator() {
+            return "/";
+        }
+
+        @Override
+        public String getTempDirectory(ShellControl pc) {
             return "/tmp/";
         }
 
@@ -98,7 +147,7 @@ public interface OsType {
         }
 
         @Override
-        public Map<String, String> getProperties(ShellControl pc) throws Exception {
+        public Map<String, String> getProperties(ShellControl pc) {
             return null;
         }
 
@@ -138,16 +187,30 @@ public interface OsType {
         }
     }
 
-    static class MacOs implements OsType {
+    final class MacOs implements OsType {
+
+        @Override
+        public List<String> determineInterestingPaths(ShellControl pc) throws Exception {
+            var home = getHomeDirectory(pc);
+            return List.of(
+                    home,
+                    FileNames.join(home, "Downloads"),
+                    FileNames.join(home, "Documents"),
+                    FileNames.join(home, "Desktop"),
+                    "/Applications",
+                    "/Library",
+                    "/System",
+                    "/etc");
+        }
 
         @Override
         public String getHomeDirectory(ShellControl pc) throws Exception {
-            return pc.executeStringSimpleCommand(pc.getShellDialect().getPrintEnvironmentVariableCommand("HOME"));
+            return pc.executeSimpleStringCommand(pc.getShellDialect().getPrintEnvironmentVariableCommand("HOME"));
         }
 
         @Override
         public String getTempDirectory(ShellControl pc) throws Exception {
-            var found = pc.executeStringSimpleCommand(pc.getShellDialect().getPrintVariableCommand("TMPDIR"));
+            var found = pc.executeSimpleStringCommand(pc.getShellDialect().getPrintVariableCommand("TMPDIR"));
 
             // This variable is not defined for root users, so manually fix it. Why? ...
             if (found.isBlank()) {
@@ -155,6 +218,11 @@ public interface OsType {
             }
 
             return found;
+        }
+
+        @Override
+        public String getFileSystemSeparator() {
+            return "/";
         }
 
         @Override
@@ -166,7 +234,7 @@ public interface OsType {
         public Map<String, String> getProperties(ShellControl pc) throws Exception {
             try (CommandControl c =
                     pc.subShell(ShellDialects.BASH).command("sw_vers").start()) {
-                var text = c.readOrThrow();
+                var text = c.readStdoutOrThrow();
                 return PropertiesFormatsParser.parse(text, ":");
             }
         }
@@ -174,7 +242,7 @@ public interface OsType {
         @Override
         public String determineOperatingSystemName(ShellControl pc) throws Exception {
             var properties = getProperties(pc);
-            var name = pc.executeStringSimpleCommand(
+            var name = pc.executeSimpleStringCommand(
                     "awk '/SOFTWARE LICENSE AGREEMENT FOR macOS/' '/System/Library/CoreServices/Setup "
                             + "Assistant.app/Contents/Resources/en.lproj/OSXSoftwareLicense.rtf' | "
                             + "awk -F 'macOS ' '{print $NF}' | awk '{print substr($0, 0, length($0)-1)}'");

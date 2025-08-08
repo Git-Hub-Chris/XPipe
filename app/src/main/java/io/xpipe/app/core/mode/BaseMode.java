@@ -1,6 +1,6 @@
 package io.xpipe.app.core.mode;
 
-import io.xpipe.app.comp.storage.collection.SourceCollectionViewState;
+import io.xpipe.app.browser.BrowserModel;
 import io.xpipe.app.comp.storage.store.StoreViewState;
 import io.xpipe.app.core.*;
 import io.xpipe.app.issue.*;
@@ -9,6 +9,7 @@ import io.xpipe.app.storage.DataStorage;
 import io.xpipe.app.util.DefaultSecretValue;
 import io.xpipe.app.util.FileBridge;
 import io.xpipe.app.util.LockedSecretValue;
+import io.xpipe.core.impl.LocalStore;
 import io.xpipe.core.util.JacksonMapper;
 
 public class BaseMode extends OperationMode {
@@ -37,6 +38,7 @@ public class BaseMode extends OperationMode {
         JacksonMapper.configure(objectMapper -> {
             objectMapper.registerSubtypes(LockedSecretValue.class, DefaultSecretValue.class);
         });
+        LocalStore.init();
         AppPrefs.init();
         AppCharsets.init();
         AppCharsetter.init();
@@ -50,10 +52,11 @@ public class BaseMode extends OperationMode {
     @Override
     public void finalTeardown() {
         TrackEvent.info("mode", "Background mode shutdown started");
+        BrowserModel.DEFAULT.reset();
         AppSocketServer.reset();
-        SourceCollectionViewState.reset();
         StoreViewState.reset();
         DataStorage.reset();
+        AppPrefs.reset();
         AppExtensionManager.reset();
         TrackEvent.info("mode", "Background mode shutdown finished");
     }

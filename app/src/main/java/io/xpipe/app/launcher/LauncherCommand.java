@@ -3,8 +3,8 @@ package io.xpipe.app.launcher;
 import io.xpipe.app.core.AppLock;
 import io.xpipe.app.core.AppLogs;
 import io.xpipe.app.core.mode.OperationMode;
-import io.xpipe.app.issue.LogErrorHandler;
 import io.xpipe.app.issue.ErrorEvent;
+import io.xpipe.app.issue.LogErrorHandler;
 import io.xpipe.app.issue.TrackEvent;
 import io.xpipe.app.util.ThreadHelper;
 import io.xpipe.beacon.BeaconServer;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 @CommandLine.Command(
-        header = "Launches the X-Pipe daemon.",
+        header = "Launches the XPipe daemon.",
         sortOptions = false,
         showEndOfOptionsDelimiterInUsageHelp = true)
 public class LauncherCommand implements Callable<Integer> {
@@ -34,7 +34,7 @@ public class LauncherCommand implements Callable<Integer> {
     XPipeDaemonMode mode;
 
     @CommandLine.Parameters(paramLabel = "<input>")
-    List<String> inputs = List.of();
+    final List<String> inputs = List.of();
 
     public static void runLauncher(String[] args) {
         event("Launcher received commands: " + Arrays.asList(args));

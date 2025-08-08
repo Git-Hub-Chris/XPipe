@@ -1,6 +1,7 @@
 package io.xpipe.app.core;
 
 import io.xpipe.app.fxcomps.Comp;
+import io.xpipe.app.issue.ErrorEvent;
 import io.xpipe.app.issue.TrackEvent;
 import io.xpipe.app.prefs.AppPrefs;
 import io.xpipe.app.prefs.CloseBehaviourAlert;
@@ -11,10 +12,17 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.Region;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
+import javax.imageio.ImageIO;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -25,6 +33,7 @@ public class AppMainWindow {
 
     @Getter
     private final Stage stage;
+
     private final BooleanProperty windowActive = new SimpleBooleanProperty(false);
     private Thread thread;
     private volatile Instant lastUpdate;
@@ -33,8 +42,12 @@ public class AppMainWindow {
         this.stage = stage;
     }
 
-    public static void init(Stage stage) {
+    public static AppMainWindow init(Stage stage) {
         INSTANCE = new AppMainWindow(stage);
+        var scene = new Scene(new Region(), -1, -1, false);
+        stage.setScene(scene);
+        AppWindowHelper.setupStylesheets(stage.getScene());
+        return INSTANCE;
     }
 
     private synchronized void onChange() {
@@ -117,11 +130,6 @@ public class AppMainWindow {
             }
         });
 
-        stage.setOnCloseRequest(event -> {
-            // Close other windows
-            Stage.getWindows().stream().filter(w -> !w.equals(stage)).toList().forEach(w -> w.fireEvent(event));
-        });
-
         stage.setOnHiding(e -> {
             saveState();
         });
@@ -136,7 +144,12 @@ public class AppMainWindow {
                 return;
             }
 
+            // Close other windows
+            Stage.getWindows().stream().filter(w -> !w.equals(stage)).toList().forEach(w -> w.fireEvent(e));
+            stage.close();
+
             AppPrefs.get().closeBehaviour().getValue().getExit().run();
+            e.consume();
         });
 
         TrackEvent.debug("Window listeners added");
@@ -151,6 +164,14 @@ public class AppMainWindow {
             // stage.setMaximized(state.maximized);
 
             TrackEvent.debug("Window loaded saved bounds");
+        } else if (!AppProperties.get().isShowcase()) {
+            stage.setWidth(1280);
+            stage.setHeight(720);
+        } else {
+            stage.setX(310);
+            stage.setY(178);
+            stage.setWidth(1300);
+            stage.setHeight(730);
         }
     }
 
@@ -159,14 +180,26 @@ public class AppMainWindow {
             return;
         }
 
-        var newState = new WindowState(
-                stage.isMaximized(), (int) stage.getX(), (int) stage.getY(), (int) stage.getWidth(), (int)
-                        stage.getHeight());
+        if (AppProperties.get().isShowcase()) {
+            return;
+        }
+
+        var newState = WindowState.builder()
+                .maximized(stage.isMaximized())
+                .windowX((int) stage.getX())
+                .windowY((int) stage.getY())
+                .windowWidth((int) stage.getWidth())
+                .windowHeight((int) stage.getHeight())
+                .build();
         AppCache.update("windowState", newState);
     }
 
     private WindowState loadState() {
         if (!AppPrefs.get().saveWindowLocation.get()) {
+            return null;
+        }
+
+        if (AppProperties.get().isShowcase()) {
             return null;
         }
 
@@ -190,20 +223,6 @@ public class AppMainWindow {
         return inBounds ? state : null;
     }
 
-    private void setupUndoRedo(Scene scene) {
-        scene.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
-            if ((event.isControlDown() && event.getCode().equals(KeyCode.Y))
-                    || (event.isControlDown()
-                            && event.isShiftDown()
-                            && event.getCode().equals(KeyCode.Z))) {
-                event.consume();
-            } else if (event.isControlDown() && event.getCode().equals(KeyCode.Z)) {
-                event.consume();
-            }
-        });
-        TrackEvent.debug("Set undo/redo handler");
-    }
-
     public void initialize() {
         initializeWindow();
         setupListeners();
@@ -217,20 +236,30 @@ public class AppMainWindow {
 
     private void setupContent(Comp<?> content) {
         var contentR = content.createRegion();
-        var scene = new Scene(contentR, -1, -1, false);
-        stage.setScene(scene);
         contentR.requestFocus();
+        stage.getScene().setRoot(contentR);
         TrackEvent.debug("Set content scene");
 
-        setupUndoRedo(scene);
-
-        scene.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+        stage.getScene().addEventHandler(KeyEvent.KEY_PRESSED, event -> {
             if (AppProperties.get().isDeveloperMode() && event.getCode().equals(KeyCode.F6)) {
                 var newR = content.createRegion();
-                scene.setRoot(newR);
+                stage.getScene().setRoot(newR);
                 newR.requestFocus();
 
                 TrackEvent.debug("Rebuilt content");
+                event.consume();
+            }
+
+            if (AppProperties.get().isShowcase() && event.getCode().equals(KeyCode.F12)) {
+                var image = stage.getScene().getRoot().snapshot(null, null);
+                var awt = AppImages.toAwtImage(image);
+                var file = Path.of(System.getProperty("user.home"), "Desktop", "xpipe-screenshot.png");
+                try {
+                    ImageIO.write(awt, "png", file.toFile());
+                } catch (IOException e) {
+                    ErrorEvent.fromThrowable(e).handle();
+                }
+                TrackEvent.debug("Screenshot taken");
                 event.consume();
             }
         });
@@ -239,8 +268,16 @@ public class AppMainWindow {
 
     public void setContent(Comp<?> content) {
         setupContent(content);
-        AppWindowHelper.setupStylesheets(stage.getScene());
     }
 
-    private static record WindowState(boolean maximized, int windowX, int windowY, int windowWidth, int windowHeight) {}
+    @Builder
+    @Jacksonized
+    @Value
+    private static class WindowState {
+        boolean maximized;
+        int windowX;
+        int windowY;
+        int windowWidth;
+        int windowHeight;
+    }
 }

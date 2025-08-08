@@ -6,9 +6,12 @@ import io.xpipe.app.fxcomps.util.SimpleChangeListener;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.ListChangeListener;
 import javafx.css.Size;
 import javafx.css.SizeUnits;
 import javafx.geometry.Point2D;
+import javafx.scene.AccessibleRole;
+import javafx.scene.Node;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.web.WebView;
@@ -17,6 +20,7 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.Value;
 
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Getter
@@ -26,10 +30,7 @@ public class SvgView {
     private final ObservableValue<Number> height;
     private final ObservableValue<String> svgContent;
 
-    private SvgView(
-            ObservableValue<Number> width,
-            ObservableValue<Number> height,
-            ObservableValue<String> svgContent) {
+    private SvgView(ObservableValue<Number> width, ObservableValue<Number> height, ObservableValue<String> svgContent) {
         this.width = PlatformThread.sync(width);
         this.height = PlatformThread.sync(height);
         this.svgContent = PlatformThread.sync(svgContent);
@@ -52,7 +53,7 @@ public class SvgView {
         var widthProperty = new SimpleIntegerProperty();
         var heightProperty = new SimpleIntegerProperty();
         SimpleChangeListener.apply(content, val -> {
-            if (val == null) {
+            if (val == null || val.isBlank()) {
                 return;
             }
 
@@ -64,7 +65,7 @@ public class SvgView {
     }
 
     private static Point2D getDimensions(String val) {
-        var regularExpression = Pattern.compile("<svg[^>]+?width=\"([^\s]+)\"", Pattern.DOTALL);
+        var regularExpression = Pattern.compile("<svg[^>]+?width=\"([^ ]+)\"", Pattern.DOTALL);
         var matcher = regularExpression.matcher(val);
 
         if (!matcher.find()) {
@@ -79,7 +80,7 @@ public class SvgView {
         }
 
         var width = matcher.group(1);
-        regularExpression = Pattern.compile("<svg.+?height=\"([^\s]+)\"", Pattern.DOTALL);
+        regularExpression = Pattern.compile("<svg.+?height=\"([^ ]+)\"", Pattern.DOTALL);
         matcher = regularExpression.matcher(val);
         matcher.find();
         var height = matcher.group(1);
@@ -92,8 +93,14 @@ public class SvgView {
 
     private WebView createWebView() {
         var wv = new WebView();
-        wv.setPageFill(Color.TRANSPARENT);
+        // Sometimes a web view might not render when the background is said to transparent, at least according to stack
+        // overflow
+        wv.setPageFill(Color.valueOf("#00000001"));
+        // wv.setPageFill(Color.BLACK);
         wv.getEngine().setJavaScriptEnabled(false);
+        wv.setContextMenuEnabled(false);
+        wv.setFocusTraversable(false);
+        wv.setAccessibleRole(AccessibleRole.IMAGE_VIEW);
 
         wv.getEngine().loadContent(getHtml(svgContent.getValue()));
         svgContent.addListener((c, o, n) -> {
@@ -103,6 +110,16 @@ public class SvgView {
             }
 
             wv.getEngine().loadContent(getHtml(n));
+        });
+
+        // Hide scrollbars that popup on every content change. Bug in WebView?
+        wv.getChildrenUnmodifiable().addListener((ListChangeListener<Node>) change -> {
+            Set<Node> scrolls = wv.lookupAll(".scroll-bar");
+            for (Node scroll : scrolls) {
+                scroll.setFocusTraversable(false);
+                scroll.setVisible(false);
+                scroll.setManaged(false);
+            }
         });
 
         // As the aspect ratio of the WebView is kept constant, we can compute the zoom only using the width

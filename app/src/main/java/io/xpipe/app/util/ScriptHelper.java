@@ -10,15 +10,21 @@ import io.xpipe.core.process.ShellDialects;
 import io.xpipe.core.util.SecretValue;
 import lombok.SneakyThrows;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
 public class ScriptHelper {
 
     public static String createDetachCommand(ShellControl pc, String command) {
+        if (pc.getShellDialect().equals(ShellDialects.POWERSHELL)) {
+            var script = ScriptHelper.createExecScript(pc, command);
+            return String.format(
+                    "Start-Process -WindowStyle Minimized -FilePath powershell.exe -ArgumentList \"-NoProfile\", \"-File\", %s",
+                    ShellDialects.POWERSHELL.fileArgument(script));
+        }
+
         if (pc.getOsType().equals(OsType.WINDOWS)) {
-            return "start \"\" " + command;
+            return "start \"\" /MIN " + command;
         } else {
             return "nohup " + command + " </dev/null &>/dev/null & disown";
         }
@@ -39,21 +45,26 @@ public class ScriptHelper {
     }
 
     public static String constructInitFile(
-            ShellControl processControl, List<String> init, String toExecuteInShell, boolean login) {
+            ShellControl processControl, List<String> init, String toExecuteInShell, boolean login, String displayName)
+            throws Exception {
         ShellDialect t = processControl.getShellDialect();
         String nl = t.getNewLine().getNewLineString();
         var content = String.join(nl, init.stream().filter(s -> s != null).toList()) + nl;
 
-        if (login) {
-            var applyProfilesCommand = t.applyProfileFilesCommand();
-            if (applyProfilesCommand != null) {
-                content = applyProfilesCommand + "\n" + content;
-            }
+        if (displayName != null) {
+            content = t.changeTitleCommand(displayName) + "\n" + content;
         }
 
         var applyRcCommand = t.applyRcFileCommand();
         if (applyRcCommand != null) {
-            content = applyRcCommand + "\n" + content;
+            content = content + "\n" + applyRcCommand + "\n";
+        }
+
+        // We just apply the profile files always, as we can't be sure that they definitely have been applied.
+        // Especially if we launch something that is not the system default shell
+        var applyProfilesCommand = t.applyProfileFilesCommand();
+        if (applyProfilesCommand != null) {
+            content = content + "\n" + applyProfilesCommand + "\n";
         }
 
         if (toExecuteInShell != null) {
@@ -62,7 +73,7 @@ public class ScriptHelper {
             content += t.getExitCommand() + nl;
         }
 
-        var initFile = createExecScript(processControl, content);
+        var initFile = createExecScript(processControl, t.initFileName(processControl), content);
         return initFile;
     }
 
@@ -75,7 +86,7 @@ public class ScriptHelper {
     @SneakyThrows
     public static String getExecScriptFile(ShellControl processControl, String fileEnding) {
         var fileName = "exec-" + getScriptId();
-        var temp = processControl.getTemporaryDirectory();
+        var temp = processControl.getSubTemporaryDirectory();
         var file = FileNames.join(temp, fileName + "." + fileEnding);
         return file;
     }
@@ -84,13 +95,13 @@ public class ScriptHelper {
     public static String createExecScript(ShellControl processControl, String content) {
         var fileName = "exec-" + getScriptId();
         ShellDialect type = processControl.getShellDialect();
-        var temp = processControl.getTemporaryDirectory();
+        var temp = processControl.getSubTemporaryDirectory();
         var file = FileNames.join(temp, fileName + "." + type.getScriptFileEnding());
         return createExecScript(processControl, file, content);
     }
 
     @SneakyThrows
-    private static String createExecScript(ShellControl processControl, String file, String content) {
+    public static String createExecScript(ShellControl processControl, String file, String content) {
         ShellDialect type = processControl.getShellDialect();
         content = type.prepareScriptContent(content);
 
@@ -102,7 +113,7 @@ public class ScriptHelper {
         // processControl.executeSimpleCommand(type.getFileTouchCommand(file), "Failed to create script " + file);
         processControl
                 .getShellDialect()
-                .createTextFileWriteCommand(processControl, content, file)
+                .createScriptTextFileWriteCommand(processControl, content, file)
                 .execute();
         var e = type.getMakeExecutableCommand(file);
         if (e != null) {
@@ -112,6 +123,11 @@ public class ScriptHelper {
     }
 
     public static String createAskPassScript(SecretValue pass, ShellControl parent, boolean forceExecutable)
+            throws Exception {
+        return createAskPassScript(pass != null ? List.of(pass) : List.of(), parent, forceExecutable);
+    }
+
+    public static String createAskPassScript(List<SecretValue> pass, ShellControl parent, boolean forceExecutable)
             throws Exception {
         var scriptType = parent.getShellDialect();
 
@@ -123,23 +139,31 @@ public class ScriptHelper {
         return createAskPassScript(pass, parent, scriptType);
     }
 
-    private static String createAskPassScript(SecretValue pass, ShellControl parent, ShellDialect type)
+    private static String createAskPassScript(List<SecretValue> pass, ShellControl parent, ShellDialect type)
             throws Exception {
         var fileName = "askpass-" + getScriptId() + "." + type.getScriptFileEnding();
-        var temp = parent.getTemporaryDirectory();
+        var temp = parent.getSubTemporaryDirectory();
         var file = FileNames.join(temp, fileName);
         if (type != parent.getShellDialect()) {
             try (var sub = parent.subShell(type).start()) {
                 var content = sub.getShellDialect()
                         .prepareAskpassContent(
-                                sub, file, pass != null ? Collections.singletonList(pass.getSecretValue()) : List.of());
+                                sub,
+                                file,
+                                pass.stream()
+                                        .map(secretValue -> secretValue.getSecretValue())
+                                        .toList());
                 var exec = createExecScript(sub, file, content);
                 return exec;
             }
         } else {
             var content = parent.getShellDialect()
                     .prepareAskpassContent(
-                            parent, file, pass != null ? Collections.singletonList(pass.getSecretValue()) : List.of());
+                            parent,
+                            file,
+                            pass.stream()
+                                    .map(secretValue -> secretValue.getSecretValue())
+                                    .toList());
             var exec = createExecScript(parent, file, content);
             return exec;
         }

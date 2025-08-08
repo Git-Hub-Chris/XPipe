@@ -46,27 +46,11 @@ public class DataStorageWriter {
                             var found = DataStorage.get().getStoreEntryIfPresent(store);
                             return found.map(dataSourceEntry -> dataSourceEntry.getUuid());
                         }
-                    } catch (JsonProcessingException e) {
+                    } catch (JsonProcessingException ignored) {
                     }
                     return Optional.empty();
                 },
                 "storeId",
-                isRoot);
-
-        node = replaceReferencesWithIds(
-                node,
-                possibleReference -> {
-                    try {
-                        var source = mapper.treeToValue(possibleReference, DataSource.class);
-                        if (!isRoot) {
-                            var found = DataStorage.get().getSourceEntry(source);
-                            return found.map(dataSourceEntry -> dataSourceEntry.getUuid());
-                        }
-                    } catch (JsonProcessingException e) {
-                    }
-                    return Optional.empty();
-                },
-                "sourceId",
                 isRoot);
 
         return node;

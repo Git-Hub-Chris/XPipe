@@ -4,6 +4,15 @@
 -fx-padding: 1em;
 }
 
+.browser .tile > * {
+ -fx-padding: 0.6em 0 0.6em 0;
+}
+
+.browser .overview {
+    -fx-spacing: 1.5em;
+    -fx-padding: 1.5em;
+}
+
 .selected-file-list {
     -fx-spacing: 5px;
     -fx-padding: 8px;
@@ -21,14 +30,7 @@
 -fx-border-radius: 1px;
 }
 
-.bookmark-list .button {
--fx-border-width: 0;
--fx-border-radius: 0;
--fx-background-radius: 0;
--fx-background-insets: 0;
-}
-
-.bookmark-list .button:hover {
+.bookmark-list .tree-cell:filled:hover {
     -fx-background-color: -color-accent-muted;
 }
 
@@ -36,20 +38,122 @@
     -fx-background-color: -color-success-muted;
 }
 
-.bookmark-list .button:drag-over {
+.bookmark-list .tree-cell:drag-over {
     -fx-background-color: -color-success-muted;
 }
 
+.bookmark-list .tree-cell:disabled {
+    -fx-opacity: 0.5;
+}
+
+.bookmark-list .tree-cell {
+    -fx-background-radius: 5px;
+    -fx-padding: 8px 8px 8px 3px;
+    -fx-background-insets: 5px 5px 5px 5px;
+}
+
+.bookmark-list .tree-cell.first {
+    -fx-padding: 12px 8px 8px 3px;
+    -fx-background-insets: 9px 5px 5px 5px;
+
+}
+
 .browser .bookmark-list {
-    -fx-border-width: 0 0 1 1;
+    -fx-border-width: 0;
+}
+
+.browser .bookmark-list *.scroll-bar:horizontal,
+.browser .bookmark-list *.scroll-bar:horizontal *.track,
+.browser .bookmark-list *.scroll-bar:horizontal *.track-background,
+.browser .bookmark-list *.scroll-bar:horizontal *.thumb,
+.browser .bookmark-list *.scroll-bar:horizontal *.increment-button,
+.browser .bookmark-list *.scroll-bar:horizontal *.decrement-button,
+.browser .bookmark-list *.scroll-bar:horizontal *.increment-arrow, 
+.browser .bookmark-list *.scroll-bar:horizontal *.decrement-arrow {
+    -fx-background-color: null;
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-shape: null;
 }
 
 .browser .tool-bar {
     -fx-border-width: 1 0 1 0;
+    -fx-padding: 5px 10px ;
+}
+
+.browser .status-bar {
+    -fx-border-width: 1 0 0 0;
+-fx-border-color: -color-neutral-muted;
 }
 
 .browser .breadcrumbs >.divider {
     -fx-padding: 0;
+}
+
+.browser .context-menu > * > * {
+-fx-padding: 3px 10px 3px 10px;
+-fx-background-radius: 1px;
+-fx-spacing: 20px;
+}
+
+.browser .context-menu .separator {
+-fx-padding: 0;
+}
+
+.browser .breadcrumbs {
+-fx-padding: 2px 10px 2px 10px;
+}
+
+.browser .context-menu .separator .line {
+-fx-padding: 0;
+-fx-border-insets: 0px;
+}
+
+.browser .breadcrumbs {
+-fx-background-color: transparent;
+}
+
+.browser .breadcrumbs .button {
+-fx-padding: 3px 1px 3px 1px;
+-fx-background-color: transparent;
+}
+
+.browser .breadcrumbs .button:hover {
+-fx-background-color: -color-neutral-muted;
+}
+
+.browser .path-text:invisible {
+-fx-text-fill: transparent;
+}
+
+.browser .overview-file-list {
+    -fx-border-width: 1px;
+}
+
+.browser .overview-file-list .button {
+    -fx-border-width: 0;
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+}
+
+.browser .context-menu .accelerator-text {
+-fx-padding: 3px 0px 3px 50px;
+}
+
+.browser .context-menu > * {
+-fx-padding: 0;
+}
+
+.browser .context-menu {
+-fx-padding: 0;
+-fx-background-radius: 1px;
+-fx-border-color: -color-neutral-muted;
+}
+
+.browser .tab-pane {
+ -fx-border-width: 0 0 0 1px;
+-fx-border-color: -color-neutral-emphasis;
 }
 
 .chooser-bar {
@@ -69,7 +173,7 @@
     visibility: hidden ;
 }
 
-.browser .table-directory-view .table-view {
+.browser .table-view {
     -color-header-bg: -color-bg-default;
     -color-cell-bg-selected: -color-neutral-emphasis;
     -color-cell-fg-selected: -color-fg-emphasis;
@@ -82,7 +186,7 @@
     -fx-opacity: 0.75;
 }
 
-.browser .table-directory-view .table-view:drag-into-current .table-row-cell {
+.browser .table-view:drag-into-current .table-row-cell {
     -fx-opacity: 0.8;
 }
 
@@ -90,7 +194,7 @@
     -fx-background-color: -color-accent-subtle;
 }
 
-.browser .table-row-cell:selected {
+.browser .table-row-cell:selected, .browser .table-row-cell:hover:selected {
     -fx-background-color: -color-success-subtle;
 }
 

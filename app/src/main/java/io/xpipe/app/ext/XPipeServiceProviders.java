@@ -3,16 +3,16 @@ package io.xpipe.app.ext;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import io.xpipe.app.issue.ErrorEvent;
 import io.xpipe.app.issue.TrackEvent;
-import io.xpipe.core.util.ModuleLayerLoader;
-import io.xpipe.app.util.XPipeDaemon;
 import io.xpipe.core.process.ProcessControlProvider;
 import io.xpipe.core.util.JacksonMapper;
+import io.xpipe.core.util.ModuleLayerLoader;
 import io.xpipe.core.util.ProxyFunction;
 
 public class XPipeServiceProviders {
 
     public static void load(ModuleLayer layer) {
-        var hasDaemon = XPipeDaemon.getInstanceIfPresent().isPresent();
+        // TODO
+        var hasDaemon = true;
         ModuleLayerLoader.loadAll(layer, hasDaemon, true, t -> {
             ErrorEvent.fromThrowable(t).handle();
         });

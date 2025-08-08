@@ -12,11 +12,11 @@ import java.util.function.Function;
 
 public interface CommandControl extends ProcessControl {
 
-    public static final int UNASSIGNED_EXIT_CODE = -1;
-    public static final int TIMEOUT_EXIT_CODE = -2;
-    public static final int KILLED_EXIT_CODE = -3;
+    int UNASSIGNED_EXIT_CODE = -1;
+    int EXIT_TIMEOUT_EXIT_CODE = -2;
+    int START_FAILED_EXIT_CODE = -3;
 
-    static enum TerminalExitMode {
+    enum TerminalExitMode {
         KEEP_OPEN,
         CLOSE
     }
@@ -25,16 +25,16 @@ public interface CommandControl extends ProcessControl {
 
     CommandControl terminalExitMode(TerminalExitMode mode);
 
-    public CommandControl doesNotObeyReturnValueConvention();
+    CommandControl doesNotObeyReturnValueConvention();
 
     @Override
-    public CommandControl sensitive();
+    CommandControl sensitive();
 
     CommandControl complex();
 
     CommandControl notComplex();
 
-    CommandControl workingDirectory(String directory);
+    CommandControl withWorkingDirectory(String directory);
 
     default void execute() throws Exception {
         try (var c = start()) {
@@ -54,39 +54,42 @@ public interface CommandControl extends ProcessControl {
 
     OutputStream startExternalStdin() throws Exception;
 
-    public boolean waitFor();
+    boolean waitFor();
 
-    CommandControl customCharset(Charset charset);
+    CommandControl withCustomCharset(Charset charset);
 
     int getExitCode();
 
-    default CommandControl elevated() {
-        return elevated((v) -> true);
+    default CommandControl elevated(String message) {
+        return elevated(message, (v) -> true);
     }
 
-    CommandControl elevated(FailableFunction<ShellControl, Boolean, Exception> elevationFunction);
+    CommandControl elevated(String message, FailableFunction<ShellControl, Boolean, Exception> elevationFunction);
 
     @Override
     CommandControl start() throws Exception;
 
     CommandControl exitTimeout(Integer timeout);
 
-    public void withStdoutOrThrow(Charsetter.FailableConsumer<InputStreamReader, Exception> c) throws Exception;
+    void withStdoutOrThrow(Charsetter.FailableConsumer<InputStreamReader, Exception> c);
+
     String readStdoutDiscardErr() throws Exception;
 
-    public void discardOrThrow() throws Exception;
+    void discardOrThrow() throws Exception;
 
     void accumulateStdout(Consumer<String> con);
 
     void accumulateStderr(Consumer<String> con);
 
-    public String readOrThrow() throws Exception;
+    byte[] readRawBytesOrThrow() throws Exception;
 
-    public default boolean discardAndCheckExit() throws ProcessOutputException {
+    String readStdoutOrThrow() throws Exception;
+
+    default boolean discardAndCheckExit() throws ProcessOutputException {
         try {
             discardOrThrow();
             return true;
-        }  catch (ProcessOutputException ex) {
+        } catch (ProcessOutputException ex) {
             if (ex.isTimeOut()) {
                 throw ex;
             }

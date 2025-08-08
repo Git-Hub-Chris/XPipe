@@ -14,13 +14,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Represents a reference to a data source that is managed by X-Pipe.
+ * Represents a reference to a data source that is managed by XPipe.
  * <p>
  * The actual data is only queried when required and is not cached.
  * Therefore, the queried data is always up-to-date at the point of calling a method that queries the data.
  * <p>
  * As soon a data source reference is created, the data source is locked
- * within X-Pipe to prevent concurrent modification and the problems that can arise from it.
+ * within XPipe to prevent concurrent modification and the problems that can arise from it.
  * By default, the lock is held until the calling program terminates and prevents
  * other applications from modifying the data source in any way.
  * To unlock the data source earlier, you can make use the {@link #unlock()} method.
@@ -98,14 +98,14 @@ public interface DataSource {
     /**
      * Wrapper for {@link #create(DataSourceId, String, InputStream)} that creates an anonymous data source.
      */
-    public static DataSource createAnonymous(String type, Path path) {
+    static DataSource createAnonymous(String type, Path path) {
         return create(null, type, path);
     }
 
     /**
      * Wrapper for {@link #create(DataSourceId, String, InputStream)}.
      */
-    public static DataSource create(DataSourceId id, String type, Path path) {
+    static DataSource create(DataSourceId id, String type, Path path) {
         try (var in = Files.newInputStream(path)) {
             return create(id, type, in);
         } catch (IOException e) {
@@ -116,14 +116,14 @@ public interface DataSource {
     /**
      * Wrapper for {@link #create(DataSourceId, String, InputStream)} that creates an anonymous data source.
      */
-    public static DataSource createAnonymous(String type, URL url) {
+    static DataSource createAnonymous(String type, URL url) {
         return create(null, type, url);
     }
 
     /**
      * Wrapper for {@link #create(DataSourceId, String, InputStream)}.
      */
-    public static DataSource create(DataSourceId id, String type, URL url) {
+    static DataSource create(DataSourceId id, String type, URL url) {
         try (var in = url.openStream()) {
             return create(id, type, in);
         } catch (IOException e) {
@@ -134,7 +134,7 @@ public interface DataSource {
     /**
      * Wrapper for {@link #create(DataSourceId, String, InputStream)} that creates an anonymous data source.
      */
-    public static DataSource createAnonymous(String type, InputStream in) {
+    static DataSource createAnonymous(String type, InputStream in) {
         return create(null, type, in);
     }
 
@@ -146,7 +146,7 @@ public interface DataSource {
      * @param in   the input stream to read
      * @return a {@link DataSource} instances that can be used to access the underlying data
      */
-    public static DataSource create(DataSourceId id, String type, InputStream in) {
+    static DataSource create(DataSourceId id, String type, InputStream in) {
         return DataSourceImpl.create(id, type, in);
     }
 
@@ -156,7 +156,7 @@ public interface DataSource {
      * @param id the data source id
      * @return a {@link DataSource} instances that can be used to access the underlying data
      */
-    public static DataSource create(DataSourceId id, io.xpipe.core.source.DataSource<?> source) {
+    static DataSource create(DataSourceId id, io.xpipe.core.source.DataSource<?> source) {
         return DataSourceImpl.create(id, source);
     }
 
@@ -169,7 +169,7 @@ public interface DataSource {
      * @param in   the data store to add
      * @return a {@link DataSource} instances that can be used to access the underlying data
      */
-    public static DataSource create(DataSourceId id, String type, DataStore in) {
+    static DataSource create(DataSourceId id, String type, DataStore in) {
         return DataSourceImpl.create(id, type, in);
     }
 
@@ -177,7 +177,7 @@ public interface DataSource {
 
     void appendTo(DataSource target);
 
-    public io.xpipe.core.source.DataSource<?> getInternalSource();
+    io.xpipe.core.source.DataSource<?> getInternalSource();
 
     /**
      * Returns the id of this data source.

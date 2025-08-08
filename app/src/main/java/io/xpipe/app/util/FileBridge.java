@@ -121,7 +121,23 @@ public class FileBridge {
         return Optional.empty();
     }
 
-    public void openString(String keyName, Object key, String input, Consumer<String> output, Consumer<String> consumer) {
+    public void openReadOnlyString(String input, Consumer<String> fileConsumer) {
+        if (input == null) {
+            input = "";
+        }
+
+        var id = UUID.randomUUID();
+        String s = input;
+        openIO(
+                id.toString(),
+                id,
+                () -> new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8)),
+                null,
+                fileConsumer);
+    }
+
+    public void openString(
+            String keyName, Object key, String input, Consumer<String> output, Consumer<String> fileConsumer) {
         if (input == null) {
             input = "";
         }
@@ -138,7 +154,7 @@ public class FileBridge {
                         output.accept(new String(toByteArray(), StandardCharsets.UTF_8));
                     }
                 },
-                consumer);
+                fileConsumer);
     }
 
     public void openIO(
@@ -166,10 +182,12 @@ public class FileBridge {
         }
 
         var entry = new Entry(file, key, keyName, in -> {
-            try (var out = output.get()) {
-                in.transferTo(out);
-            } catch (Exception ex) {
-                ErrorEvent.fromThrowable(ex).handle();
+            if (output != null) {
+                try (var out = output.get()) {
+                    in.transferTo(out);
+                } catch (Exception ex) {
+                    ErrorEvent.fromThrowable(ex).handle();
+                }
             }
         });
         entry.registerChange();

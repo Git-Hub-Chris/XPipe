@@ -1,0 +1,99 @@
+package io.xpipe.app.browser.action;
+
+import io.xpipe.app.browser.BrowserEntry;
+import io.xpipe.app.browser.OpenFileSystemModel;
+import io.xpipe.app.issue.ErrorEvent;
+import io.xpipe.core.util.ModuleLayerLoader;
+import javafx.scene.Node;
+import javafx.scene.input.KeyCombination;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
+
+public interface BrowserAction {
+
+    enum Category {
+        CUSTOM,
+        OPEN,
+        NATIVE,
+        COPY_PASTE,
+        MUTATION
+    }
+
+    List<BrowserAction> ALL = new ArrayList<>();
+
+    static List<LeafAction> getFlattened() {
+        return ALL.stream()
+                .map(browserAction -> browserAction instanceof LeafAction
+                        ? List.of((LeafAction) browserAction)
+                        : ((BranchAction) browserAction).getBranchingActions())
+                .flatMap(List::stream)
+                .toList();
+    }
+
+    static LeafAction byId(String id) {
+        return getFlattened().stream()
+                .filter(browserAction -> id.equals(browserAction.getId()))
+                .findAny()
+                .orElseThrow();
+    }
+
+    default Node getIcon(OpenFileSystemModel model, List<BrowserEntry> entries) {
+        return null;
+    }
+
+    default Category getCategory() {
+        return null;
+    }
+
+    default KeyCombination getShortcut() {
+        return null;
+    }
+
+    default boolean acceptsEmptySelection() {
+        return false;
+    }
+
+    String getName(OpenFileSystemModel model, List<BrowserEntry> entries);
+
+    default boolean isApplicable(OpenFileSystemModel model, List<BrowserEntry> entries) {
+        return true;
+    }
+
+    default boolean automaticallyResolveLinks() {
+        return true;
+    }
+
+    default boolean isActive(OpenFileSystemModel model, List<BrowserEntry> entries) {
+        return true;
+    }
+
+    class Loader implements ModuleLayerLoader {
+
+        @Override
+        public void init(ModuleLayer layer) {
+            ALL.addAll(ServiceLoader.load(layer, BrowserAction.class).stream()
+                    .map(actionProviderProvider -> actionProviderProvider.get())
+                    .filter(provider -> {
+                        try {
+                            return true;
+                        } catch (Throwable e) {
+                            ErrorEvent.fromThrowable(e).handle();
+                            return false;
+                        }
+                    })
+                    .toList());
+        }
+
+        @Override
+        public boolean requiresFullDaemon() {
+            return true;
+        }
+
+        @Override
+        public boolean prioritizeLoading() {
+            return false;
+        }
+    }
+}

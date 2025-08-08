@@ -11,7 +11,7 @@ import com.dlsc.preferencesfx.util.VisibilityProperty;
 import io.xpipe.app.comp.base.ButtonComp;
 import io.xpipe.app.core.AppI18n;
 import io.xpipe.app.core.AppProperties;
-import io.xpipe.app.core.AppStyle;
+import io.xpipe.app.core.AppTheme;
 import io.xpipe.app.ext.PrefsChoiceValue;
 import io.xpipe.app.ext.PrefsHandler;
 import io.xpipe.app.ext.PrefsProvider;
@@ -28,6 +28,7 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import lombok.SneakyThrows;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -68,8 +69,8 @@ public class AppPrefs {
     private static AppPrefs INSTANCE;
     private final SimpleListProperty<SupportedLocale> languageList =
             new SimpleListProperty<>(FXCollections.observableArrayList(Arrays.asList(SupportedLocale.values())));
-    private final SimpleListProperty<AppStyle.Theme> themeList =
-            new SimpleListProperty<>(FXCollections.observableArrayList(Arrays.asList(AppStyle.Theme.values())));
+    private final SimpleListProperty<AppTheme.Theme> themeList =
+            new SimpleListProperty<>(FXCollections.observableArrayList(Arrays.asList(AppTheme.Theme.values())));
     private final SimpleListProperty<CloseBehaviour> closeBehaviourList = new SimpleListProperty<>(
             FXCollections.observableArrayList(PrefsChoiceValue.getSupported(CloseBehaviour.class)));
     private final SimpleListProperty<ExternalEditorType> externalEditorList = new SimpleListProperty<>(
@@ -90,17 +91,12 @@ public class AppPrefs {
                     languageList, languageInternal)
             .render(() -> new TranslatableComboBoxControl<>());
 
-    private final ObjectProperty<AppStyle.Theme> themeInternal =
-            typed(new SimpleObjectProperty<>(AppStyle.Theme.LIGHT), AppStyle.Theme.class);
-    public final ReadOnlyProperty<AppStyle.Theme> theme = themeInternal;
-    private final SingleSelectionField<AppStyle.Theme> themeControl =
-            Field.ofSingleSelectionType(themeList, themeInternal).render(() -> new TranslatableComboBoxControl<>());
+    public final ObjectProperty<AppTheme.Theme> theme = typed(new SimpleObjectProperty<>(), AppTheme.Theme.class);
+    private final SingleSelectionField<AppTheme.Theme> themeControl =
+            Field.ofSingleSelectionType(themeList, theme).render(() -> new TranslatableComboBoxControl<>());
     private final BooleanProperty useSystemFontInternal = typed(new SimpleBooleanProperty(true), Boolean.class);
     public final ReadOnlyBooleanProperty useSystemFont = useSystemFontInternal;
     private final IntegerProperty tooltipDelayInternal = typed(new SimpleIntegerProperty(1000), Integer.class);
-
-    private final IntegerProperty fontSizeInternal = typed(new SimpleIntegerProperty(12), Integer.class);
-    public final ReadOnlyIntegerProperty fontSize = fontSizeInternal;
 
     private final BooleanProperty saveWindowLocationInternal = typed(new SimpleBooleanProperty(false), Boolean.class);
     public final ReadOnlyBooleanProperty saveWindowLocation = saveWindowLocationInternal;
@@ -118,9 +114,10 @@ public class AppPrefs {
     // Lock
     // ====
 
-    private final Property<SecretValue> lockPassword = new SimpleObjectProperty<SecretValue>();
+    private final Property<SecretValue> lockPassword = new SimpleObjectProperty<>();
     private final StringProperty lockCrypt = typed(new SimpleStringProperty(""), String.class);
-    private final StringField lockCryptControl = StringField.ofStringType(lockCrypt).render(() -> new SimpleControl<StringField, StackPane>() {
+    private final StringField lockCryptControl = StringField.ofStringType(lockCrypt)
+            .render(() -> new SimpleControl<StringField, StackPane>() {
 
                 private Region button;
 
@@ -128,15 +125,20 @@ public class AppPrefs {
                 public void initializeParts() {
                     super.initializeParts();
                     this.node = new StackPane();
-                    button = new ButtonComp(Bindings.createStringBinding(() -> {
-                        return lockCrypt.getValue() != null? AppI18n.get("changeLock"):AppI18n.get("createLock");
-                    }), () -> LockChangeAlert.show()).createRegion();
+                    button = new ButtonComp(
+                                    Bindings.createStringBinding(() -> {
+                                        return lockCrypt.getValue() != null
+                                                ? AppI18n.get("changeLock")
+                                                : AppI18n.get("createLock");
+                                    }),
+                                    () -> LockChangeAlert.show())
+                            .createRegion();
                 }
 
                 @Override
                 public void layoutParts() {
-                    ((StackPane)this.node).getChildren().addAll(this.button);
-                    ((StackPane)this.node).setAlignment(Pos.CENTER_LEFT);
+                    this.node.getChildren().addAll(this.button);
+                    this.node.setAlignment(Pos.CENTER_LEFT);
                 }
             });
 
@@ -177,8 +179,7 @@ public class AppPrefs {
 
     // Automatically update
     // ====================
-    private final BooleanProperty automaticallyCheckForUpdates =
-            typed(new SimpleBooleanProperty(true), Boolean.class);
+    private final BooleanProperty automaticallyCheckForUpdates = typed(new SimpleBooleanProperty(true), Boolean.class);
     private final BooleanField automaticallyCheckForUpdatesField =
             BooleanField.ofBooleanType(automaticallyCheckForUpdates).render(() -> new CustomToggleControl());
 
@@ -289,10 +290,6 @@ public class AppPrefs {
         return lockPassword;
     }
 
-    public StringProperty lockCryptProperty() {
-        return lockCrypt;
-    }
-
     public final ReadOnlyIntegerProperty editorReloadTimeout() {
         return editorReloadTimeout;
     }
@@ -375,6 +372,13 @@ public class AppPrefs {
         PrefsProvider.getAll().forEach(prov -> prov.init());
     }
 
+    public static void reset() {
+        INSTANCE.save();
+
+        // Keep instance as we might need some values on shutdown, e.g. on update with terminals
+        // INSTANCE = null;
+    }
+
     public static AppPrefs get() {
         return INSTANCE;
     }
@@ -412,7 +416,7 @@ public class AppPrefs {
 
     public <T> void setFromText(ReadOnlyProperty<T> prop, String newValue) {
         var field = getFieldForEntry(prop);
-        if (!field.isEditable()) {
+        if (field == null || !field.isEditable()) {
             return;
         }
 
@@ -443,7 +447,12 @@ public class AppPrefs {
     }
 
     public Class<?> getSettingType(String breadcrumb) {
-        var found = classMap.get(getSetting(breadcrumb).valueProperty());
+        var s = getSetting(breadcrumb);
+        if (s == null) {
+            throw new IllegalStateException("Unknown breadcrumb " + breadcrumb);
+        }
+
+        var found = classMap.get(s.valueProperty());
         if (found == null) {
             throw new IllegalStateException("Unassigned type for " + breadcrumb);
         }
@@ -484,8 +493,16 @@ public class AppPrefs {
         return null;
     }
 
+    @SneakyThrows
     private AppPreferencesFx createPreferences() {
+        var ctr = Setting.class.getDeclaredConstructor(String.class, Element.class, Property.class);
+        ctr.setAccessible(true);
+        var about = ctr.newInstance(null, new LazyNodeElement<>(() -> new AboutComp().createRegion()), null);
+        var troubleshoot = ctr.newInstance(null, new LazyNodeElement<>(() -> new TroubleshootComp().createRegion()), null);
+
         var categories = new ArrayList<>(List.of(
+                Category.of("about", Group.of(about)),
+                Category.of("troubleshoot", Group.of(troubleshoot)),
                 Category.of(
                         "system",
                         Group.of(
@@ -495,12 +512,13 @@ public class AppPrefs {
                                         externalStartupBehaviourControl,
                                         externalStartupBehaviour),
                                 Setting.of("closeBehaviour", closeBehaviourControl, closeBehaviour)),
-                        Group.of(
-                                "security",
-                                Setting.of("workspaceLock", lockCryptControl, lockCrypt)),
+                        Group.of("security", Setting.of("workspaceLock", lockCryptControl, lockCrypt)),
                         Group.of(
                                 "updates",
-                                Setting.of("automaticallyUpdate", automaticallyCheckForUpdatesField, automaticallyCheckForUpdates),
+                                Setting.of(
+                                        "automaticallyUpdate",
+                                        automaticallyCheckForUpdatesField,
+                                        automaticallyCheckForUpdates),
                                 Setting.of("updateToPrereleases", checkForPrereleasesField, checkForPrereleases)),
                         Group.of(
                                 "advanced",
@@ -512,7 +530,7 @@ public class AppPrefs {
                         Group.of(
                                 "uiOptions",
                                 Setting.of("language", languageControl, languageInternal),
-                                Setting.of("theme", themeControl, themeInternal),
+                                Setting.of("theme", themeControl, theme),
                                 Setting.of("useSystemFont", useSystemFontInternal),
                                 Setting.of("tooltipDelay", tooltipDelayInternal, tooltipDelayMin, tooltipDelayMax)),
                         Group.of("windowOptions", Setting.of("saveWindowLocation", saveWindowLocationInternal))),

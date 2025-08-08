@@ -29,7 +29,7 @@ public class AppExtensionManager {
     private ModuleLayer baseLayer = ModuleLayer.boot();
     private ModuleLayer extendedLayer;
 
-    public static void init(boolean loadProviders) throws Exception {
+    public static void init(boolean loadProviders) {
         if (INSTANCE != null) {
             return;
         }
@@ -69,7 +69,7 @@ public class AppExtensionManager {
             Path p = Path.of(localInstallation);
             if (!Files.exists(p)) {
                 throw new IllegalStateException(
-                        "Required local X-Pipe installation was not found but is required for development");
+                        "Required local XPipe installation was not found but is required for development");
             }
 
             var extensions = XPipeInstallation.getLocalExtensionsDirectory(p);
@@ -242,12 +242,12 @@ public class AppExtensionManager {
                             .tag("dependencies", ext.get().getDependencies())
                             .handle();
 
-                    return Optional.of(ext.get());
+                    return ext;
                 }
             }
         } catch (Throwable t) {
             ErrorEvent.fromThrowable(t)
-                    .description("Unable to load extension from " + dir.toString() + ". Is the installation corrupted?")
+                    .description("Unable to load extension from " + dir + ". Is the installation corrupted?")
                     .handle();
         }
         return Optional.empty();

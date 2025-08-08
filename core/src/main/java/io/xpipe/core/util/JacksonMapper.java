@@ -57,7 +57,7 @@ public class JacksonMapper {
     }
 
     private static List<Module> findModules(ModuleLayer layer) {
-        ArrayList<Module> modules = new ArrayList<Module>();
+        ArrayList<Module> modules = new ArrayList<>();
         ServiceLoader<Module> loader =
                 layer != null ? ServiceLoader.load(layer, Module.class) : ServiceLoader.load(Module.class);
         for (Module module : loader) {
@@ -67,7 +67,7 @@ public class JacksonMapper {
     }
 
     /**
-     * Constructs a new ObjectMapper that is able to map all required X-Pipe classes and also possible extensions.
+     * Constructs a new ObjectMapper that is able to map all required XPipe classes and also possible extensions.
      */
     public static ObjectMapper newMapper() {
         if (!JacksonMapper.isInit()) {
@@ -81,7 +81,7 @@ public class JacksonMapper {
         if (!JacksonMapper.isInit()) {
             return BASE;
         }
-        
+
         return INSTANCE;
     }
 

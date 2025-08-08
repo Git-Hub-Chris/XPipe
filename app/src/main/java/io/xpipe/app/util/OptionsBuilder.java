@@ -1,5 +1,6 @@
 package io.xpipe.app.util;
 
+import atlantafx.base.controls.Spacer;
 import io.xpipe.app.core.AppI18n;
 import io.xpipe.app.fxcomps.Comp;
 import io.xpipe.app.fxcomps.impl.*;
@@ -7,6 +8,7 @@ import io.xpipe.core.util.SecretValue;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
+import javafx.geometry.Orientation;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import net.synedra.validatorfx.Check;
@@ -49,7 +51,11 @@ public class OptionsBuilder {
     public OptionsBuilder addTitle(ObservableValue<String> title) {
         finishCurrent();
         entries.add(new OptionsComp.Entry(
-                null, null, null, null, Comp.of(() -> new Label(title.getValue())).styleClass("title-header")));
+                null,
+                null,
+                null,
+                null,
+                Comp.of(() -> new Label(title.getValue())).styleClass("title-header")));
         return this;
     }
 
@@ -82,26 +88,34 @@ public class OptionsBuilder {
         props.add(prop);
         return this;
     }
+
     public OptionsBuilder addToggle(Property<Boolean> prop) {
         var comp = new ToggleGroupComp<>(
                 prop,
                 new SimpleObjectProperty<>(Map.of(
-                        Boolean.TRUE,
-                        AppI18n.observable("app.yes"),
-                        Boolean.FALSE,
-                        AppI18n.observable("app.no"))));
+                        Boolean.TRUE, AppI18n.observable("app.yes"), Boolean.FALSE, AppI18n.observable("app.no"))));
         pushComp(comp);
         props.add(prop);
         return this;
     }
+
     public OptionsBuilder addString(Property<String> prop) {
         return addString(prop, false);
     }
+
     public OptionsBuilder addString(Property<String> prop, boolean lazy) {
         var comp = new TextFieldComp(prop, lazy);
         pushComp(comp);
         props.add(prop);
         return this;
+    }
+
+    public OptionsBuilder spacer(double size) {
+        return addComp(Comp.of(() -> new Spacer(size, Orientation.VERTICAL)));
+    }
+
+    public OptionsBuilder separator() {
+        return addComp(Comp.separator());
     }
 
 
@@ -130,6 +144,11 @@ public class OptionsBuilder {
 
     public OptionsBuilder addComp(Comp<?> comp, Property<?> prop) {
         pushComp(comp);
+        props.add(prop);
+        return this;
+    }
+
+    public OptionsBuilder addProperty(Property<?> prop) {
         props.add(prop);
         return this;
     }

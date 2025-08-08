@@ -27,6 +27,11 @@ public abstract class ExternalApplicationType implements PrefsChoiceValue {
 
     public abstract boolean isAvailable();
 
+    @Override
+    public String toString() {
+        return getId();
+    }
+
     public static class MacApplication extends ExternalApplicationType {
 
         protected final String applicationName;
@@ -77,7 +82,7 @@ public abstract class ExternalApplicationType implements PrefsChoiceValue {
 
         public boolean isAvailable() {
             try (ShellControl pc = LocalStore.getShell()) {
-                return pc.executeBooleanSimpleCommand(pc.getShellDialect().getWhichCommand(executable));
+                return pc.executeSimpleBooleanCommand(pc.getShellDialect().getWhichCommand(executable));
             } catch (Exception e) {
                 ErrorEvent.fromThrowable(e).omit().handle();
                 return false;

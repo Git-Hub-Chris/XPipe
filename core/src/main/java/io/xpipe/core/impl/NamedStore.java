@@ -10,7 +10,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 /**
- * A store that refers to another store in the X-Pipe storage.
+ * A store that refers to another store in the XPipe storage.
  * The referenced store has to be resolved by the caller manually, as this class does not act as a resolver.
  */
 @JsonTypeName("named")
@@ -22,12 +22,12 @@ public final class NamedStore implements DataStore {
     private final String name;
 
     @Override
-    public void validate() throws Exception {
+    public void validate() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean delete() throws Exception {
+    public boolean delete() {
         throw new UnsupportedOperationException();
     }
 

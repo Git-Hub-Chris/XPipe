@@ -1,6 +1,6 @@
 package io.xpipe.ext.base.actions;
 
-import io.xpipe.app.comp.source.store.GuiDsStoreCreator;
+import io.xpipe.app.comp.store.GuiDsStoreCreator;
 import io.xpipe.app.ext.ActionProvider;
 import io.xpipe.app.storage.DataStoreEntry;
 import io.xpipe.app.util.DefaultSecretValue;
@@ -18,12 +18,12 @@ public class AddStoreAction implements ActionProvider {
         DataStore store;
 
         @Override
-        public boolean requiresPlatform() {
+        public boolean requiresJavaFXPlatform() {
             return true;
         }
 
         @Override
-        public void execute() throws Exception {
+        public void execute() {
             if (store == null) {
                 return;
             }
@@ -43,7 +43,8 @@ public class AddStoreAction implements ActionProvider {
 
             @Override
             public Action createAction(List<String> args) throws Exception {
-                var storeString = DefaultSecretValue.builder().encryptedValue(args.get(0)).build();
+                var storeString =
+                        DefaultSecretValue.builder().encryptedValue(args.get(0)).build();
                 var store = JacksonMapper.parse(storeString.getSecretValue(), DataStore.class);
                 return new Action(store);
             }

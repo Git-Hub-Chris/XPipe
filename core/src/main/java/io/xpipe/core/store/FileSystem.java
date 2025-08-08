@@ -2,13 +2,17 @@ package io.xpipe.core.store;
 
 import io.xpipe.core.impl.FileNames;
 import io.xpipe.core.process.ShellControl;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.Value;
+import lombok.experimental.NonFinal;
 
 import java.io.Closeable;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -16,31 +20,69 @@ import java.util.stream.Stream;
 public interface FileSystem extends Closeable, AutoCloseable {
 
     @Value
-    static class FileEntry {
+    @NonFinal
+    class FileEntry {
         @NonNull
         FileSystem fileSystem;
+
         @NonNull
+                @NonFinal
+                @Setter
         String path;
+
         Instant date;
-        boolean directory;
         boolean hidden;
         Boolean executable;
         long size;
         String mode;
 
+        @NonNull
+        FileKind kind;
+
         public FileEntry(
-                @NonNull FileSystem fileSystem, @NonNull String path, Instant date, boolean directory, boolean hidden, Boolean executable,
+                @NonNull FileSystem fileSystem,
+                @NonNull String path,
+                Instant date,
+                boolean hidden,
+                Boolean executable,
                 long size,
-                String mode
-        ) {
+                String mode,
+                @NonNull FileKind kind) {
             this.fileSystem = fileSystem;
             this.mode = mode;
-            this.path = directory ? FileNames.toDirectory(path) : path;
+            this.kind = kind;
+            this.path = kind == FileKind.DIRECTORY ? FileNames.toDirectory(path) : path;
             this.date = date;
-            this.directory = directory;
             this.hidden = hidden;
             this.executable = executable;
             this.size = size;
+        }
+
+        public FileEntry resolved() {
+            return this;
+        }
+
+        public static FileEntry ofDirectory(FileSystem fileSystem, String path) {
+            return new FileEntry(fileSystem, path, Instant.now(), true, false, 0, null, FileKind.DIRECTORY);
+        }
+    }
+
+    @Value
+    @EqualsAndHashCode(callSuper = true)
+    class LinkFileEntry extends FileEntry {
+
+        @NonNull
+        FileEntry target;
+
+        public LinkFileEntry(
+                @NonNull FileSystem fileSystem, @NonNull String path, Instant date, boolean hidden, Boolean executable, long size, String mode, @NonNull FileEntry target
+        ) {
+            super(fileSystem, path, date, hidden, executable, size, mode, FileKind.LINK);
+            this.target = target;
+        }
+
+        public FileEntry resolved() {
+            return target;
         }
     }
 
@@ -54,9 +96,9 @@ public interface FileSystem extends Closeable, AutoCloseable {
 
     OutputStream openOutput(String file) throws Exception;
 
-    public boolean fileExists(String file) throws Exception;
+    boolean fileExists(String file) throws Exception;
 
-    public  void delete(String file) throws Exception;
+    void delete(String file) throws Exception;
 
     void copy(String file, String newFile) throws Exception;
 
@@ -66,24 +108,32 @@ public interface FileSystem extends Closeable, AutoCloseable {
 
     void touch(String file) throws Exception;
 
+    void symbolicLink(String linkFile, String targetFile) throws Exception;
+
     boolean directoryExists(String file) throws Exception;
 
     void directoryAccessible(String file) throws Exception;
 
     Stream<FileEntry> listFiles(String file) throws Exception;
 
-    default Stream<FileEntry> listFilesRecursively(String file) throws Exception {
-        return listFiles(file).flatMap(fileEntry -> {
-            if (!fileEntry.isDirectory()) {
-                return Stream.of(fileEntry);
-            }
+    default List<FileEntry> listFilesRecursively(String file) throws Exception {
+        var base = listFiles(file).toList();
+        return base.stream()
+                .flatMap(fileEntry -> {
+                    if (fileEntry.getKind() != FileKind.DIRECTORY) {
+                        return Stream.of(fileEntry);
+                    }
 
-            try {
-                return Stream.concat(Stream.of(fileEntry), listFilesRecursively(fileEntry.getPath()));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+                    try {
+                        var list = new ArrayList<FileEntry>();
+                        list.add(fileEntry);
+                        list.addAll(listFilesRecursively(fileEntry.getPath()));
+                        return list.stream();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .toList();
     }
 
     List<String> listRoots() throws Exception;

@@ -1,6 +1,5 @@
 package io.xpipe.app.core.mode;
 
-import io.xpipe.app.comp.storage.collection.SourceCollectionViewState;
 import io.xpipe.app.comp.storage.store.StoreViewState;
 import io.xpipe.app.core.*;
 import io.xpipe.app.issue.TrackEvent;
@@ -60,6 +59,7 @@ public abstract class PlatformMode extends OperationMode {
         TrackEvent.info("mode", "Platform mode initial setup");
         AppI18n.init();
         AppFont.loadFonts();
+        AppTheme.init();
         AppStyle.init();
         AppImages.init();
         TrackEvent.info("mode", "Finished essential component initialization before platform");
@@ -76,21 +76,21 @@ public abstract class PlatformMode extends OperationMode {
             ThreadHelper.sleep(100);
         }
 
-
         // If we downloaded an update, and decided to no longer automatically update, don't remind us!
         // You can still update manually in the about tab
         if (AppPrefs.get().automaticallyUpdate().get()) {
             UpdateAvailableAlert.showIfNeeded();
         }
 
-        SourceCollectionViewState.init();
         StoreViewState.init();
     }
 
     protected void waitForPlatform() {
         // The platform thread waits for the shutdown hook to finish in case SIGTERM is sent.
         // Therefore, we do not wait for the platform when being in a shutdown hook.
-        if (PlatformState.getCurrent() == PlatformState.RUNNING && !Platform.isFxApplicationThread() && !OperationMode.isInShutdownHook()) {
+        if (PlatformState.getCurrent() == PlatformState.RUNNING
+                && !Platform.isFxApplicationThread()
+                && !OperationMode.isInShutdownHook()) {
             TrackEvent.info("mode", "Waiting for platform thread ...");
             CountDownLatch latch = new CountDownLatch(1);
             Platform.runLater(latch::countDown);

@@ -3,9 +3,11 @@ package io.xpipe.app.comp.storage.store;
 import io.xpipe.app.core.AppFont;
 import io.xpipe.app.core.AppI18n;
 import io.xpipe.app.fxcomps.SimpleComp;
+import io.xpipe.app.storage.DataStorage;
 import io.xpipe.app.util.Hyperlinks;
 import io.xpipe.app.util.ScanAlert;
 import io.xpipe.core.impl.LocalStore;
+import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -16,7 +18,6 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.kordamp.ikonli.javafx.FontIcon;
-
 
 public class StoreIntroComp extends SimpleComp {
 
@@ -35,7 +36,7 @@ public class StoreIntroComp extends SimpleComp {
         });
 
         var scanButton = new Button(AppI18n.get("detectConnections"), new FontIcon("mdi2m-magnify"));
-        scanButton.setOnAction(event -> ScanAlert.showIfNeeded(new LocalStore(), false));
+        scanButton.setOnAction(event -> ScanAlert.showAsync(DataStorage.get().getStoreEntry(new LocalStore()), false));
         var scanPane = new StackPane(scanButton);
         scanPane.setAlignment(Pos.CENTER);
 
@@ -52,15 +53,11 @@ public class StoreIntroComp extends SimpleComp {
         docLinkPane.setAlignment(Pos.CENTER);
 
         var v = new VBox(
-                title,
-                introDesc,
-                new Separator(Orientation.HORIZONTAL),
-                machine,
-                scanPane
-//                new Separator(Orientation.HORIZONTAL),
-//                documentation,
-//                docLinkPane
-        );
+                title, introDesc, new Separator(Orientation.HORIZONTAL), machine, scanPane
+                //                new Separator(Orientation.HORIZONTAL),
+                //                documentation,
+                //                docLinkPane
+                );
         v.setMinWidth(Region.USE_PREF_SIZE);
         v.setMaxWidth(Region.USE_PREF_SIZE);
         v.setMinHeight(Region.USE_PREF_SIZE);
@@ -70,8 +67,9 @@ public class StoreIntroComp extends SimpleComp {
         v.getStyleClass().add("intro");
 
         var sp = new StackPane(v);
-        sp.setAlignment(Pos.CENTER);
+        sp.setAlignment(Pos.BOTTOM_CENTER);
         sp.setPickOnBounds(false);
+        sp.setPadding(new Insets(0, 0, 40, 0));
         return sp;
     }
 }

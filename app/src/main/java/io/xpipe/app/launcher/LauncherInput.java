@@ -1,9 +1,11 @@
 package io.xpipe.app.launcher;
 
+import io.xpipe.app.browser.BrowserModel;
 import io.xpipe.app.core.mode.OperationMode;
 import io.xpipe.app.ext.ActionProvider;
 import io.xpipe.app.issue.ErrorEvent;
 import io.xpipe.app.issue.TrackEvent;
+import io.xpipe.core.store.ShellStore;
 import lombok.Getter;
 import lombok.Value;
 
@@ -18,6 +20,10 @@ import java.util.List;
 public abstract class LauncherInput {
 
     public static void handle(List<String> arguments) {
+        if (arguments.size() == 0) {
+            return;
+        }
+
         TrackEvent.withDebug("launcher", "Handling arguments")
                 .elements(arguments)
                 .handle();
@@ -31,14 +37,14 @@ public abstract class LauncherInput {
             }
         });
 
-        var requiresPlatform = all.stream().anyMatch(launcherInput -> launcherInput.requiresPlatform());
+        var requiresPlatform = all.stream().anyMatch(launcherInput -> launcherInput.requiresJavaFXPlatform());
         if (requiresPlatform) {
             OperationMode.switchTo(OperationMode.GUI);
         }
         var hasGui = OperationMode.get() == OperationMode.GUI;
 
         all.forEach(launcherInput -> {
-            if (!hasGui && launcherInput.requiresPlatform()) {
+            if (!hasGui && launcherInput.requiresJavaFXPlatform()) {
                 return;
             }
 
@@ -75,7 +81,7 @@ public abstract class LauncherInput {
                                             .equalsIgnoreCase(action))
                             .findFirst();
                     if (found.isPresent()) {
-                        ActionProvider.Action a = null;
+                        ActionProvider.Action a;
                         try {
                             a = found.get().getLauncherCallSite().createAction(args);
                         } catch (Exception e) {
@@ -114,11 +120,12 @@ public abstract class LauncherInput {
                 return;
             }
 
-            // GuiDsCreatorMultiStep.showForStore(DataSourceProvider.Category.STREAM, FileStore.local(file), null);
+            var dir = Files.isDirectory(file) ? file : file.getParent();
+            BrowserModel.DEFAULT.openFileSystemAsync(null, ShellStore.createLocal(), dir.toString(), null);
         }
 
         @Override
-        public boolean requiresPlatform() {
+        public boolean requiresJavaFXPlatform() {
             return true;
         }
     }

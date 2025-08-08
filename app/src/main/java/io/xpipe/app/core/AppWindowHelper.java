@@ -12,7 +12,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
-import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
@@ -21,6 +20,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,21 +39,26 @@ public class AppWindowHelper {
         return sp;
     }
 
+    public static void addIcons(Stage stage) {
+        stage.getIcons().clear();
+        for (String s : List.of(
+                "logo_16x16.png",
+                "logo_24x24.png",
+                "logo_32x32.png",
+                "logo_48x48.png",
+                "logo_128x128.png",
+                "logo_256x256.png")) {
+            if (AppImages.hasNormalImage("logo/" + s)) {
+                stage.getIcons().add(AppImages.image("logo/" + s));
+            }
+        }
+    }
+
     public static Stage sideWindow(
             String title, Function<Stage, Comp<?>> contentFunc, boolean bindSize, ObservableValue<Boolean> loading) {
         var stage = new Stage();
-
-        if (App.getApp() != null) {
-            var icon = App.getApp().getIcon();
-            stage.getIcons().add(icon);
-        } else {
-            var url = AppResources.getResourceURL(AppResources.XPIPE_MODULE, "img/logo.png");
-            if (url.isPresent()) {
-                stage.getIcons().add(new Image(url.get().toString()));
-            }
-        }
-
         stage.setTitle(title);
+        addIcons(stage);
         setupContent(stage, contentFunc, bindSize, loading);
         setupStylesheets(stage.getScene());
 
@@ -73,7 +78,8 @@ public class AppWindowHelper {
         childStage.setY(stage.getY() + stage.getHeight() / 2 - childStage.getHeight() / 2);
     }
 
-    public static void showAlert(Consumer<Alert> c, ObservableValue<Boolean> loading, Consumer<Optional<ButtonType>> bt) {
+    public static void showAlert(
+            Consumer<Alert> c, ObservableValue<Boolean> loading, Consumer<Optional<ButtonType>> bt) {
         ThreadHelper.runAsync(() -> {
             var r = showBlockingAlert(c);
             if (bt != null) {
@@ -131,7 +137,7 @@ public class AppWindowHelper {
 
     public static Alert createEmptyAlert() {
         Alert alert = new Alert(Alert.AlertType.NONE);
-        setIcon(alert);
+        addIcons(((Stage) alert.getDialogPane().getScene().getWindow()));
         setupStylesheets(alert.getDialogPane().getScene());
         return alert;
     }
@@ -205,20 +211,5 @@ public class AppWindowHelper {
         }
 
         stage.sizeToScene();
-    }
-
-    private static void setIcon(Alert a) {
-        if (App.getApp() != null && App.getApp().getIcon() != null) {
-            ((Stage) a.getDialogPane().getScene().getWindow())
-                    .getIcons()
-                    .add(App.getApp().getIcon());
-        } else {
-            var url = AppResources.getResourceURL(AppResources.XPIPE_MODULE, "img/logo.png");
-            if (url.isPresent()) {
-                ((Stage) a.getDialogPane().getScene().getWindow())
-                        .getIcons()
-                        .add(new Image(url.get().toString()));
-            }
-        }
     }
 }

@@ -1,21 +1,20 @@
 package io.xpipe.app.ext;
 
 import io.xpipe.app.issue.ErrorEvent;
-import io.xpipe.core.util.ModuleLayerLoader;
 import io.xpipe.core.source.DataSource;
 import io.xpipe.core.store.DataStore;
+import io.xpipe.core.util.ModuleLayerLoader;
 import javafx.beans.value.ObservableValue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
-import java.util.stream.Collectors;
 
 public interface ActionProvider {
 
-    static List<ActionProvider> ALL = new ArrayList<>();
+    List<ActionProvider> ALL = new ArrayList<>();
 
-    public static class Loader implements ModuleLayerLoader {
+    class Loader implements ModuleLayerLoader {
 
         @Override
         public void init(ModuleLayer layer) {
@@ -29,7 +28,7 @@ public interface ActionProvider {
                             return false;
                         }
                     })
-                    .collect(Collectors.toSet()));
+                    .toList());
         }
 
         @Override
@@ -45,12 +44,12 @@ public interface ActionProvider {
 
     interface Action {
 
-        boolean requiresPlatform();
+        boolean requiresJavaFXPlatform();
 
         void execute() throws Exception;
     }
 
-    default boolean isActive() throws Exception {
+    default boolean isActive() {
         return true;
     }
 
@@ -68,6 +67,7 @@ public interface ActionProvider {
     default DataStoreCallSite<?> getDataStoreCallSite() {
         return null;
     }
+
     default DefaultDataStoreCallSite<?> getDefaultDataStoreCallSite() {
         return null;
     }
@@ -76,8 +76,7 @@ public interface ActionProvider {
         return null;
     }
 
-
-    public static interface DefaultDataStoreCallSite<T extends DataStore> {
+    interface DefaultDataStoreCallSite<T extends DataStore> {
 
         Action createAction(T store);
 
@@ -88,7 +87,7 @@ public interface ActionProvider {
         }
     }
 
-    public static interface DataStoreCallSite<T extends DataStore> {
+    interface DataStoreCallSite<T extends DataStore> {
 
         enum ActiveType {
             ONLY_SHOW_IF_ENABLED,
@@ -104,7 +103,7 @@ public interface ActionProvider {
             return false;
         }
 
-        default boolean isApplicable(T o) throws Exception {
+        default boolean isApplicable(T o) {
             return true;
         }
 
@@ -117,7 +116,7 @@ public interface ActionProvider {
         }
     }
 
-    public static interface DataSourceCallSite<T extends DataSource<?>> {
+    interface DataSourceCallSite<T extends DataSource<?>> {
 
         Action createAction(T source);
 
@@ -127,7 +126,7 @@ public interface ActionProvider {
             return false;
         }
 
-        default boolean isApplicable(T o) throws Exception {
+        default boolean isApplicable(T o) {
             return true;
         }
 

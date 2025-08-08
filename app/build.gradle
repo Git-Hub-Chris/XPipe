@@ -24,6 +24,7 @@ apply from: "$rootDir/gradle/gradle_scripts/lombok.gradle"
 apply from: "$projectDir/gradle_scripts/github-api.gradle"
 apply from: "$projectDir/gradle_scripts/flexmark.gradle"
 apply from: "$rootDir/gradle/gradle_scripts/picocli.gradle"
+apply from: "$rootDir/gradle/gradle_scripts/versioncompare.gradle"
 
 configurations {
     implementation.extendsFrom(dep)
@@ -34,29 +35,38 @@ dependencies {
     implementation project(':core')
     implementation project(':beacon')
 
-    compileOnly 'org.hamcrest:hamcrest:2.2'
-    compileOnly 'org.junit.jupiter:junit-jupiter-api:5.9.0'
-    compileOnly 'org.junit.jupiter:junit-jupiter-params:5.9.0'
+    compileOnly 'org.hamcrest:hamcrest:3.0'
+    compileOnly 'org.junit.jupiter:junit-jupiter-api:5.13.4'
+    compileOnly 'org.junit.jupiter:junit-jupiter-params:5.13.4'
 
-    implementation 'net.java.dev.jna:jna-jpms:5.12.1'
-    implementation 'net.java.dev.jna:jna-platform-jpms:5.12.1'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: "2.13.0"
-    implementation group: 'com.fasterxml.jackson.module', name: 'jackson-module-parameter-names', version: "2.13.0"
-    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: "2.13.0"
-    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jdk8', version: "2.13.0"
-    implementation group: 'org.kordamp.ikonli', name: 'ikonli-material2-pack', version: "12.2.0"
+    implementation 'net.java.dev.jna:jna-jpms:5.17.0'
+    implementation 'net.java.dev.jna:jna-platform-jpms:5.17.0'
+
+    implementation group: 'org.kordamp.ikonli', name: 'ikonli-material2-pack', version: "12.4.0"
     implementation group: 'org.kordamp.ikonli', name: 'ikonli-materialdesign2-pack', version: "12.2.0"
     implementation group: 'org.kordamp.ikonli', name: 'ikonli-javafx', version: "12.2.0"
-    implementation group: 'org.kordamp.ikonli', name: 'ikonli-material-pack', version: "12.2.0"
-    implementation group: 'org.kordamp.ikonli', name: 'ikonli-feather-pack', version: "12.2.0"
-    implementation name: 'preferencesfx-core-11.15.0'
-    implementation group: 'com.dlsc.formsfx', name: 'formsfx-core', version: '11.6.0'
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.0'
-    implementation 'io.xpipe:modulefs:0.1.4'
+    implementation group: 'org.kordamp.ikonli', name: 'ikonli-material-pack', version: "12.4.0"
+    implementation group: 'org.kordamp.ikonli', name: 'ikonli-feather-pack', version: "12.4.0"
+    implementation (name: 'preferencesfx-core-11.15.0')
+    implementation (group: 'com.dlsc.formsfx', name: 'formsfx-core', version: '11.6.0') {
+        exclude group: 'org.openjfx', module: 'javafx-controls'
+        exclude group: 'org.openjfx', module: 'javafx-fxml'
+    }
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.17'
+    implementation 'io.xpipe:modulefs:0.1.6'
     implementation 'com.jfoenix:jfoenix:9.0.10'
-    implementation 'org.controlsfx:controlsfx:11.1.1'
-    implementation 'net.synedra:validatorfx:0.3.1'
-    implementation 'io.github.mkpaz:atlantafx-base:1.2.0'
+    implementation 'org.controlsfx:controlsfx:11.2.2'
+    implementation 'net.synedra:validatorfx:0.6.1'
+    implementation ('io.github.mkpaz:atlantafx-base:2.1.0') {
+        exclude group: 'org.openjfx', module: 'javafx-base'
+        exclude group: 'org.openjfx', module: 'javafx-controls'
+    }
+    implementation name: 'jSystemThemeDetector-3.8'
+    implementation group: 'com.github.oshi', name: 'oshi-core-java11', version: '6.8.2'
+    implementation 'org.jetbrains:annotations:26.0.2'
+    implementation ('de.jangassen:jfa:1.2.0') {
+        exclude group: 'net.java.dev.jna', module: 'jna'
+    }
 }
 
 apply from: "$rootDir/gradle/gradle_scripts/junit.gradle"
@@ -95,11 +105,13 @@ List<String> jvmRunArgs = [
         "--add-opens", "com.dustinredmond.fxtrayicon/com.dustinredmond.fxtrayicon=io.xpipe.app",
         "--add-opens", "net.synedra.validatorfx/net.synedra.validatorfx=io.xpipe.app",
         "--add-opens", 'com.dlsc.preferencesfx/com.dlsc.preferencesfx.view=io.xpipe.app',
+        "--add-opens", 'com.dlsc.preferencesfx/com.dlsc.preferencesfx.model=io.xpipe.app',
         "-Xmx8g",
+        "-Dio.xpipe.app.arch=$rootProject.arch",
         "--enable-preview",
         //  "-XX:+ExitOnOutOfMemoryError",
         "-Dfile.encoding=UTF-8",
-        "-Dvisualvm.display.name=X-Pipe"
+        "-Dvisualvm.display.name=XPipe"
 ]
 
 
@@ -136,6 +148,7 @@ run {
     systemProperty 'io.xpipe.app.developerMode', "true"
     systemProperty 'io.xpipe.app.logLevel', "trace"
     systemProperty 'io.xpipe.app.fullVersion', rootProject.fullVersion
+    systemProperty 'io.xpipe.app.showcase', 'false'
     // systemProperty "io.xpipe.beacon.port", "21724"
     // systemProperty "io.xpipe.beacon.printMessages", "true"
     // systemProperty 'io.xpipe.app.debugPlatform', "true"
@@ -158,17 +171,6 @@ task runAttachedDebugger(type: JavaExec) {
     )
     systemProperties run.systemProperties
 }
-
-task writeBuildProperties(type: DefaultTask) {
-    doLast {
-        def resourcesDir = new File(sourceSets.main.output.resourcesDir, "io/xpipe/app/resources")
-        resourcesDir.mkdirs()
-        def contents = "version=$appVersion\n" +
-                "build=$appVersion-${new Date().format('yyyyMMddHHmm')}\n"
-        new File(resourcesDir, "app.properties").text = contents
-    }
-}
-processResources.finalizedBy(writeBuildProperties)
 
 task writeLicenses(type: DefaultTask) {
     doLast {

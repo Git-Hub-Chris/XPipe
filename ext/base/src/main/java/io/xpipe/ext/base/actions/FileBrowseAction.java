@@ -19,12 +19,12 @@ public class FileBrowseAction implements ActionProvider {
         FileStore store;
 
         @Override
-        public boolean requiresPlatform() {
+        public boolean requiresJavaFXPlatform() {
             return false;
         }
 
         @Override
-        public void execute() throws Exception {
+        public void execute() {
             DesktopHelper.browseFileInDirectory(Path.of(store.getPath()));
         }
     }
@@ -44,7 +44,7 @@ public class FileBrowseAction implements ActionProvider {
             }
 
             @Override
-            public boolean isApplicable(FileStore o) throws Exception {
+            public boolean isApplicable(FileStore o) {
                 return o.getFileSystem().equals(new LocalStore()) && Files.exists(Path.of(o.getPath()));
             }
 

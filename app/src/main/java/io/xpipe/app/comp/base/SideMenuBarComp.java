@@ -12,6 +12,8 @@ import javafx.beans.binding.Bindings;
 import javafx.beans.property.Property;
 import javafx.beans.value.ObservableValue;
 import javafx.css.PseudoClass;
+import javafx.scene.control.Button;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -51,15 +53,28 @@ public class SideMenuBarComp extends Comp<CompStructure<VBox>> {
             var fi = new FontIcon("mdi2u-update");
             var b = new BigIconButton(AppI18n.observable("update"), fi, () -> UpdateAvailableAlert.showIfNeeded());
             b.apply(GrowAugment.create(true, false));
-            b.hide(PlatformThread.sync(Bindings.createBooleanBinding(() -> {
-                return XPipeDistributionType.get().getUpdateHandler().getPreparedUpdate().getValue() == null;
-            }, XPipeDistributionType.get().getUpdateHandler().getPreparedUpdate())));
+            b.hide(PlatformThread.sync(Bindings.createBooleanBinding(
+                    () -> {
+                        return XPipeDistributionType.get()
+                                        .getUpdateHandler()
+                                        .getPreparedUpdate()
+                                        .getValue()
+                                == null;
+                    },
+                    XPipeDistributionType.get().getUpdateHandler().getPreparedUpdate())));
             vbox.getChildren().add(b.createRegion());
         }
+
+        var filler = new Button();
+        filler.setDisable(true);
+        filler.setMaxHeight(3000);
+        vbox.getChildren().add(filler);
+        VBox.setVgrow(filler, Priority.ALWAYS);
+        filler.prefWidthProperty().bind(vbox.widthProperty());
 
         vbox.getStyleClass().add("sidebar-comp");
         return new SimpleCompStructure<>(vbox);
     }
 
-    public static record Entry(ObservableValue<String> name, String icon, Comp<?> comp) {}
+    public record Entry(ObservableValue<String> name, String icon, Comp<?> comp) {}
 }

@@ -3,7 +3,6 @@ package io.xpipe.app.prefs;
 import com.dlsc.formsfx.model.structure.Element;
 import com.dlsc.formsfx.model.structure.Field;
 import com.dlsc.formsfx.model.structure.Form;
-import com.dlsc.formsfx.model.structure.NodeElement;
 import com.dlsc.preferencesfx.formsfx.view.controls.SimpleControl;
 import com.dlsc.preferencesfx.formsfx.view.renderer.PreferencesFxFormRenderer;
 import com.dlsc.preferencesfx.formsfx.view.renderer.PreferencesFxGroup;
@@ -11,6 +10,7 @@ import com.dlsc.preferencesfx.formsfx.view.renderer.PreferencesFxGroupRenderer;
 import com.dlsc.preferencesfx.util.PreferencesFxUtils;
 import io.xpipe.app.core.AppFont;
 import io.xpipe.app.core.AppI18n;
+import io.xpipe.app.fxcomps.util.BindingsHelper;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
@@ -34,6 +34,7 @@ public class CustomFormRenderer extends PreferencesFxFormRenderer {
                     @Override
                     public void initializeParts() {
                         super.initializeParts();
+                        grid.getStyleClass().add("grid");
                     }
 
                     @Override
@@ -53,7 +54,7 @@ public class CustomFormRenderer extends PreferencesFxFormRenderer {
                             if (nextRow > 1) {
                                 GridPane.setMargin(titleLabel, new Insets(SPACING * 3, 0, SPACING, 0));
                             } else {
-                                GridPane.setMargin(titleLabel, new Insets(SPACING, 0,  SPACING, 0));
+                                GridPane.setMargin(titleLabel, new Insets(SPACING, 0, SPACING, 0));
                             }
                         }
 
@@ -72,26 +73,45 @@ public class CustomFormRenderer extends PreferencesFxFormRenderer {
 
                                 SimpleControl c = (SimpleControl) ((Field) element).getRenderer();
                                 c.setField((Field) element);
-                                AppFont.header(c.getFieldLabel());
+                                AppFont.normal(c.getFieldLabel());
                                 c.getFieldLabel().setPrefHeight(AppFont.getPixelSize(1));
                                 c.getFieldLabel().setMaxHeight(AppFont.getPixelSize(1));
                                 grid.add(c.getFieldLabel(), 0, i + rowAmount, 2, 1);
 
+                                var canFocus = BindingsHelper.persist(
+                                        c.getNode().disabledProperty().not());
+
                                 var descriptionLabel = new Label();
+                                AppFont.medium(descriptionLabel);
                                 descriptionLabel.setWrapText(true);
-                                descriptionLabel.disableProperty().bind(c.getFieldLabel().disabledProperty());
-                                descriptionLabel.opacityProperty().bind(c.getFieldLabel().opacityProperty().multiply(0.8));
-                                descriptionLabel.managedProperty().bind(c.getFieldLabel().managedProperty());
-                                descriptionLabel.visibleProperty().bind(c.getFieldLabel().visibleProperty());
-                                descriptionLabel.setMaxHeight(USE_PREF_SIZE);
+                                descriptionLabel.setMaxWidth(800);
+                                descriptionLabel
+                                        .disableProperty()
+                                        .bind(c.getFieldLabel().disabledProperty());
+                                descriptionLabel
+                                        .opacityProperty()
+                                        .bind(c.getFieldLabel()
+                                                .opacityProperty()
+                                                .multiply(0.65));
+                                descriptionLabel
+                                        .managedProperty()
+                                        .bind(c.getFieldLabel().managedProperty());
+                                descriptionLabel
+                                        .visibleProperty()
+                                        .bind(c.getFieldLabel().visibleProperty());
                                 if (AppI18n.getInstance().containsKey(descriptionKey)) {
                                     rowAmount++;
                                     descriptionLabel.textProperty().bind(AppI18n.observable(descriptionKey));
+                                    descriptionLabel.focusTraversableProperty().bind(canFocus);
                                     grid.add(descriptionLabel, 0, i + rowAmount, 2, 1);
                                 }
 
                                 rowAmount++;
-                                grid.add(c.getNode(), 0, i + rowAmount, 1, 1);
+
+                                var node = c.getNode();
+                                AppFont.medium(c.getNode());
+                                c.getFieldLabel().focusTraversableProperty().bind(canFocus);
+                                grid.add(node, 0, i + rowAmount, 1, 1);
 
                                 if (i == elements.size() - 1) {
                                     // additional styling for the last setting
@@ -101,7 +121,7 @@ public class CustomFormRenderer extends PreferencesFxFormRenderer {
                                 var offset = preferencesGroup.getTitle() != null ? 15 : 0;
 
                                 GridPane.setMargin(descriptionLabel, new Insets(SPACING, 0, 0, offset));
-                                GridPane.setMargin(c.getNode(), new Insets(SPACING, 0, 0, offset));
+                                GridPane.setMargin(node, new Insets(SPACING, 0, 0, offset));
 
                                 if (!((i == 0) && (nextRow > 0))) {
                                     GridPane.setMargin(c.getFieldLabel(), new Insets(SPACING * 3, 0, 0, offset));
@@ -109,12 +129,13 @@ public class CustomFormRenderer extends PreferencesFxFormRenderer {
                                     GridPane.setMargin(c.getFieldLabel(), new Insets(SPACING, 0, 0, offset));
                                 }
 
-                                c.getFieldLabel().getStyleClass().add(styleClass.toString() + "-label");
-                                c.getNode().getStyleClass().add(styleClass.toString() + "-node");
+                                c.getFieldLabel().getStyleClass().add(styleClass + "-label");
+                                node.getStyleClass().add(styleClass + "-node");
                             }
 
-                            if (element instanceof NodeElement nodeElement) {
-                                grid.add(nodeElement.getNode(), 0, i + rowAmount, GridPane.REMAINING, 1);
+                            if (element instanceof LazyNodeElement<?> nodeElement) {
+                                var node = nodeElement.getNode();
+                                grid.add(node, 0, i + rowAmount, 2, 1);
                             }
                         }
                     }

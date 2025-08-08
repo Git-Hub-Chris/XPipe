@@ -1,9 +1,6 @@
 package io.xpipe.app.core.mode;
 
-import io.xpipe.app.core.App;
-import io.xpipe.app.core.AppChecks;
-import io.xpipe.app.core.AppLogs;
-import io.xpipe.app.core.AppProperties;
+import io.xpipe.app.core.*;
 import io.xpipe.app.issue.ErrorEvent;
 import io.xpipe.app.issue.ErrorHandler;
 import io.xpipe.app.issue.TrackEvent;
@@ -11,6 +8,7 @@ import io.xpipe.app.launcher.LauncherCommand;
 import io.xpipe.app.util.ThreadHelper;
 import io.xpipe.app.util.XPipeSession;
 import io.xpipe.core.util.XPipeDaemonMode;
+import io.xpipe.core.util.XPipeSystemId;
 import org.apache.commons.lang3.function.FailableRunnable;
 
 import java.util.ArrayList;
@@ -87,12 +85,14 @@ public abstract class OperationMode {
 
             TrackEvent.info("mode", "Initial setup");
             AppProperties.init();
+            AppState.init();
             XPipeSession.init(AppProperties.get().getBuildUuid());
             AppChecks.checkDirectoryPermissions();
             AppLogs.init();
             AppProperties.logArguments(args);
             AppProperties.logSystemProperties();
             AppProperties.logPassedProperties();
+            XPipeSystemId.init();
             TrackEvent.info("mode", "Finished initial setup");
         } catch (Throwable ex) {
             ErrorEvent.fromThrowable(ex).term().handle();
@@ -264,7 +264,7 @@ public abstract class OperationMode {
 
     public abstract void onSwitchTo();
 
-    public abstract void onSwitchFrom() throws Throwable;
+    public abstract void onSwitchFrom();
 
     public abstract void initialSetup() throws Throwable;
 

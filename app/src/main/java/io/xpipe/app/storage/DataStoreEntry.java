@@ -10,7 +10,6 @@ import io.xpipe.app.ext.DataStoreProvider;
 import io.xpipe.app.ext.DataStoreProviders;
 import io.xpipe.app.issue.ErrorEvent;
 import io.xpipe.core.store.DataStore;
-import io.xpipe.core.store.FixedHierarchyStore;
 import io.xpipe.core.util.JacksonMapper;
 import lombok.*;
 import lombok.experimental.NonFinal;
@@ -47,6 +46,9 @@ public class DataStoreEntry extends StorageElement {
     @NonFinal
     boolean expanded;
 
+    @NonFinal
+    DataStoreProvider provider;
+
     private DataStoreEntry(
             Path directory,
             UUID uuid,
@@ -58,8 +60,7 @@ public class DataStoreEntry extends StorageElement {
             boolean dirty,
             State state,
             Configuration configuration,
-            boolean expanded)
-            throws Exception {
+            boolean expanded) {
         super(directory, uuid, name, lastUsed, lastModified, dirty);
         this.information = information;
         this.store = DataStorageParser.storeFromNode(storeNode);
@@ -67,6 +68,7 @@ public class DataStoreEntry extends StorageElement {
         this.state = state;
         this.configuration = configuration;
         this.expanded = expanded;
+        this.provider = store != null ? DataStoreProviders.byStoreClass(store.getClass()).orElse(null) : null;
     }
 
     @SneakyThrows
@@ -82,7 +84,7 @@ public class DataStoreEntry extends StorageElement {
                 true,
                 State.LOAD_FAILED,
                 Configuration.defaultConfiguration(),
-                true);
+                false);
         entry.refresh(false);
         return entry;
     }
@@ -99,8 +101,25 @@ public class DataStoreEntry extends StorageElement {
             State state,
             Configuration configuration,
             boolean expanded) {
+
+        // The validation must be stuck if that happens
+        var stateToUse = state;
+        if (state == State.VALIDATING) {
+            stateToUse = State.COMPLETE_BUT_INVALID;
+        }
+
         var entry = new DataStoreEntry(
-                directory, uuid, name, lastUsed, lastModified, information, storeNode, false, state, configuration, expanded);
+                directory,
+                uuid,
+                name,
+                lastUsed,
+                lastModified,
+                information,
+                storeNode,
+                false,
+                stateToUse,
+                configuration,
+                expanded);
         return entry;
     }
 
@@ -140,7 +159,9 @@ public class DataStoreEntry extends StorageElement {
                     }
                 })
                 .orElse(Configuration.defaultConfiguration());
-        var expanded = Optional.ofNullable(json.get("expanded")).map(jsonNode -> jsonNode.booleanValue()).orElse(true);
+        var expanded = Optional.ofNullable(json.get("expanded"))
+                .map(jsonNode -> jsonNode.booleanValue())
+                .orElse(true);
 
         // Store loading is prone to errors.
         JsonNode storeNode = null;
@@ -149,7 +170,8 @@ public class DataStoreEntry extends StorageElement {
         } catch (Exception e) {
             ErrorEvent.fromThrowable(e).handle();
         }
-        return createExisting(dir, uuid, name, lastUsed, lastModified, information, storeNode, state, configuration, expanded);
+        return createExisting(
+                dir, uuid, name, lastUsed, lastModified, information, storeNode, state, configuration, expanded);
     }
 
     public void setConfiguration(Configuration configuration) {
@@ -189,19 +211,23 @@ public class DataStoreEntry extends StorageElement {
         lastModified = Instant.now();
         information = e.information;
         dirty = true;
+        provider = e.provider;
         simpleRefresh();
+    }
+
+    void setStoreInternal(DataStore store, boolean updateTime) {
+        this.store = store;
+        this.storeNode = DataStorageWriter.storeToNode(store);
+        if (updateTime) {
+            lastModified = Instant.now();
+        }
+        dirty = true;
     }
 
     /*
     TODO: Implement singular change functions
      */
     public void refresh(boolean deep) throws Exception {
-        // Assume that refresh can't be called while validating.
-        // Therefore the validation must be stuck if that happens
-        if (state == State.VALIDATING) {
-            state = State.COMPLETE_BUT_INVALID;
-        }
-
         var oldStore = store;
         DataStore newStore = DataStorageParser.storeFromNode(storeNode);
         if (newStore == null
@@ -209,6 +235,7 @@ public class DataStoreEntry extends StorageElement {
             store = null;
             state = State.LOAD_FAILED;
             information = null;
+            provider = null;
             dirty = dirty || oldStore != null;
             listeners.forEach(l -> l.onUpdate());
         } else {
@@ -220,6 +247,7 @@ public class DataStoreEntry extends StorageElement {
 
             dirty = dirty || !nodesEqual;
             store = newStore;
+            provider = DataStoreProviders.byStoreClass(newStore.getClass()).orElse(null);
             var complete = newStore.isComplete();
 
             try {
@@ -232,26 +260,26 @@ public class DataStoreEntry extends StorageElement {
                     state = State.VALIDATING;
                     listeners.forEach(l -> l.onUpdate());
                     store.validate();
-
-                    if (store instanceof FixedHierarchyStore) {
-                        DataStorage.get().refreshChildren(this);
-                    }
-
                     state = State.COMPLETE_AND_VALID;
                     information = getProvider().queryInformationString(getStore(), 50);
                     dirty = true;
                 } else if (complete) {
                     var stateToUse = state == State.LOAD_FAILED || state == State.INCOMPLETE
-                            ? State.COMPLETE_BUT_INVALID
+                            ? State.COMPLETE_NOT_VALIDATED
                             : state;
                     state = stateToUse;
+                    information = state == State.COMPLETE_AND_VALID
+                            ? information
+                            : state == State.COMPLETE_BUT_INVALID
+                                    ? getProvider().queryInvalidInformationString(getStore(), 50)
+                                    : null;
                 } else {
                     var stateToUse = state == State.LOAD_FAILED ? State.COMPLETE_BUT_INVALID : State.INCOMPLETE;
                     state = stateToUse;
                 }
             } catch (Exception e) {
-                state = store.isComplete() ? State.COMPLETE_BUT_INVALID : State.INCOMPLETE;
-                information = null;
+                state = State.COMPLETE_BUT_INVALID;
+                information = getProvider().queryInvalidInformationString(getStore(), 50);
                 throw e;
             } finally {
                 propagateUpdate();
@@ -302,19 +330,17 @@ public class DataStoreEntry extends StorageElement {
     }
 
     public DataStoreProvider getProvider() {
-        if (store == null) {
-            return null;
-        }
-
-        return DataStoreProviders.byStoreClass(store.getClass()).orElse(null);
+        return provider;
     }
 
     @Getter
-    public static enum State {
+    public enum State {
         @JsonProperty("loadFailed")
         LOAD_FAILED(false),
         @JsonProperty("incomplete")
         INCOMPLETE(false),
+        @JsonProperty("completeNotValidated")
+        COMPLETE_NOT_VALIDATED(true),
         @JsonProperty("completeButInvalid")
         COMPLETE_BUT_INVALID(true),
         @JsonProperty("validating")

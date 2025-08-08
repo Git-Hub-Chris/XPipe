@@ -24,7 +24,6 @@ import lombok.extern.jackson.Jacksonized;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
@@ -53,9 +52,9 @@ public class BeaconClient implements AutoCloseable {
     }
 
     public static BeaconClient connectProxy(ShellStore proxy) throws Exception {
-        var control = proxy.create().start();
+        var control = proxy.control().start();
         if (!ProxyManagerProvider.get().setup(control)) {
-            throw new IOException("X-Pipe connector required to perform operation");
+            throw new IOException("XPipe connector required to perform operation");
         }
         var command = control.command("xpipe beacon --raw").start();
         command.discardErr();
@@ -188,8 +187,6 @@ public class BeaconClient implements AutoCloseable {
         JsonNode node;
         try (InputStream blockIn = BeaconFormat.readBlocks(in)) {
             node = JacksonMapper.newMapper().readTree(blockIn);
-        } catch (SocketException ex) {
-            throw new ConnectorException("Connection to xpipe daemon closed unexpectedly", ex);
         } catch (IOException ex) {
             throw new ConnectorException("Couldn't read from socket", ex);
         }
@@ -316,7 +313,7 @@ public class BeaconClient implements AutoCloseable {
 
         @Override
         public String toDisplayString() {
-            return "X-Pipe CLI";
+            return "XPipe CLI";
         }
     }
 
@@ -357,7 +354,7 @@ public class BeaconClient implements AutoCloseable {
 
         @Override
         public String toDisplayString() {
-            return "X-Pipe Gateway " + version;
+            return "XPipe Gateway " + version;
         }
     }
 
@@ -373,7 +370,7 @@ public class BeaconClient implements AutoCloseable {
 
         @Override
         public String toDisplayString() {
-            return String.format("X-Pipe %s API v%s", language, version);
+            return String.format("XPipe %s API v%s", language, version);
         }
     }
 }

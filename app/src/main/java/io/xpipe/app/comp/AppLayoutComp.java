@@ -1,18 +1,15 @@
 package io.xpipe.app.comp;
 
-import io.xpipe.app.browser.FileBrowserComp;
-import io.xpipe.app.browser.FileBrowserModel;
-import io.xpipe.app.comp.about.AboutTabComp;
+import io.xpipe.app.browser.BrowserComp;
+import io.xpipe.app.browser.BrowserModel;
 import io.xpipe.app.comp.base.SideMenuBarComp;
 import io.xpipe.app.comp.storage.store.StoreLayoutComp;
-import io.xpipe.app.core.AppActionLinkDetector;
-import io.xpipe.app.core.AppFont;
-import io.xpipe.app.core.AppI18n;
-import io.xpipe.app.core.AppProperties;
+import io.xpipe.app.core.*;
 import io.xpipe.app.fxcomps.Comp;
 import io.xpipe.app.fxcomps.CompStructure;
 import io.xpipe.app.fxcomps.SimpleCompStructure;
 import io.xpipe.app.prefs.AppPrefs;
+import io.xpipe.app.prefs.PrefsComp;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.input.KeyCode;
@@ -25,6 +22,7 @@ import lombok.SneakyThrows;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AppLayoutComp extends Comp<CompStructure<BorderPane>> {
 
@@ -33,7 +31,7 @@ public class AppLayoutComp extends Comp<CompStructure<BorderPane>> {
 
     public AppLayoutComp() {
         entries = createEntryList();
-        selected = new SimpleObjectProperty<>(entries.get(0));
+        selected = new SimpleObjectProperty<>(AppState.get().isInitialLaunch() ? entries.get(1) : entries.get(0));
 
         shortcut(new KeyCodeCombination(KeyCode.V, KeyCombination.SHORTCUT_DOWN), structure -> {
             AppActionLinkDetector.detectOnPaste();
@@ -43,19 +41,16 @@ public class AppLayoutComp extends Comp<CompStructure<BorderPane>> {
     @SneakyThrows
     private List<SideMenuBarComp.Entry> createEntryList() {
         var l = new ArrayList<>(List.of(
-                new SideMenuBarComp.Entry(AppI18n.observable("connections"), "mdi2c-connection", new StoreLayoutComp()),
                 new SideMenuBarComp.Entry(
-                        AppI18n.observable("browser"),
-                        "mdi2f-file-cabinet",
-                        new FileBrowserComp(FileBrowserModel.DEFAULT)),
+                        AppI18n.observable("browser"), "mdi2f-file-cabinet", new BrowserComp(BrowserModel.DEFAULT)),
+                new SideMenuBarComp.Entry(AppI18n.observable("connections"), "mdi2c-connection", new StoreLayoutComp()),
                 // new SideMenuBarComp.Entry(AppI18n.observable("data"), "mdsal-dvr", new SourceCollectionLayoutComp()),
                 new SideMenuBarComp.Entry(
-                        AppI18n.observable("settings"), "mdsmz-miscellaneous_services", new PrefsComp(this)),
-                // new SideMenuBarComp.Entry(AppI18n.observable("help"), "mdi2b-book-open-variant", new
-                // StorageLayoutComp()),
-                // new SideMenuBarComp.Entry(AppI18n.observable("account"), "mdi2a-account", new StorageLayoutComp()),
-                new SideMenuBarComp.Entry(AppI18n.observable("about"), "mdi2p-package-variant", new AboutTabComp())));
-        if (AppProperties.get().isDeveloperMode()) {
+                        AppI18n.observable("settings"), "mdsmz-miscellaneous_services", new PrefsComp(this))));
+        // new SideMenuBarComp.Entry(AppI18n.observable("help"), "mdi2b-book-open-variant", new
+        // StorageLayoutComp()),
+        // new SideMenuBarComp.Entry(AppI18n.observable("account"), "mdi2a-account", new StorageLayoutComp())
+        if (AppProperties.get().isDeveloperMode() && !AppProperties.get().isImage()) {
             l.add(new SideMenuBarComp.Entry(
                     AppI18n.observable("developer"), "mdi2b-book-open-variant", new DeveloperTabComp()));
         }
@@ -74,24 +69,32 @@ public class AppLayoutComp extends Comp<CompStructure<BorderPane>> {
     @Override
     public CompStructure<BorderPane> createBase() {
         var map = new HashMap<SideMenuBarComp.Entry, Region>();
-        entries.forEach(entry -> map.put(entry, entry.comp().createRegion()));
+        getRegion(entries.get(0), map);
+        getRegion(entries.get(1), map);
 
         var pane = new BorderPane();
         var sidebar = new SideMenuBarComp(selected, entries);
-        pane.setCenter(selected.getValue().comp().createRegion());
+        pane.setCenter(getRegion(selected.getValue(), map));
         pane.setRight(sidebar.createRegion());
         selected.addListener((c, o, n) -> {
             if (o != null && o.equals(entries.get(2))) {
                 AppPrefs.get().save();
             }
 
-            pane.setCenter(map.get(n));
+            pane.setCenter(getRegion(n, map));
         });
-        pane.setCenter(map.get(selected.getValue()));
-        pane.setPrefWidth(1280);
-        pane.setPrefHeight(720);
         AppFont.normal(pane);
         return new SimpleCompStructure<>(pane);
+    }
+
+    private Region getRegion(SideMenuBarComp.Entry entry, Map<SideMenuBarComp.Entry, Region> map) {
+        if (map.containsKey(entry)) {
+            return map.get(entry);
+        }
+
+        Region r = entry.comp().createRegion();
+        map.put(entry, r);
+        return r;
     }
 
     public List<SideMenuBarComp.Entry> getEntries() {

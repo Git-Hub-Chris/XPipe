@@ -90,30 +90,32 @@ public class OptionsComp extends Comp<CompStructure<Pane>> {
                     popover.setDetachable(true);
                     AppFont.small(popover.getContentNode());
 
-                    var descriptionHover = new Button("... ?");
-                    descriptionHover.getStyleClass().add(Styles.BUTTON_OUTLINED);
-                    descriptionHover.getStyleClass().add(Styles.ACCENT);
-                    descriptionHover.setPadding(new Insets(0, 6, 0, 6));
-                    descriptionHover.getStyleClass().add("long-description");
-                    AppFont.header(descriptionHover);
-                    descriptionHover.setOnAction(e -> popover.show(descriptionHover));
+                    var extendedDescription = new Button("... ?");
+                    extendedDescription.setMinWidth(Region.USE_PREF_SIZE);
+                    extendedDescription.getStyleClass().add(Styles.BUTTON_OUTLINED);
+                    extendedDescription.getStyleClass().add(Styles.ACCENT);
+                    extendedDescription.setPadding(new Insets(0, 6, 0, 6));
+                    extendedDescription.getStyleClass().add("long-description");
+                    AppFont.header(extendedDescription);
+                    extendedDescription.setOnAction(e -> popover.show(extendedDescription));
 
-                    var descriptionBox = new HBox(description, new Spacer(Orientation.HORIZONTAL), descriptionHover);
+                    var descriptionBox = new HBox(description, new Spacer(Orientation.HORIZONTAL), extendedDescription);
+                    descriptionBox.setSpacing(5);
                     HBox.setHgrow(descriptionBox, Priority.ALWAYS);
                     descriptionBox.setAlignment(Pos.CENTER_LEFT);
                     line.getChildren().add(descriptionBox);
-                }else {
+                } else {
                     line.getChildren().add(description);
                 }
 
                 if (compRegion != null) {
+                    compRegion.accessibleTextProperty().bind(name.textProperty());
+                    compRegion.accessibleHelpProperty().bind(description.textProperty());
                     line.getChildren().add(compRegion);
                 }
 
                 pane.getChildren().add(line);
-            }
-
-            else if (entry.name() != null) {
+            } else if (entry.name() != null) {
                 var line = new HBox();
                 line.setFillHeight(true);
                 line.prefWidthProperty().bind(pane.widthProperty());
@@ -132,6 +134,7 @@ public class OptionsComp extends Comp<CompStructure<Pane>> {
                 line.getChildren().add(name);
 
                 if (compRegion != null) {
+                    compRegion.accessibleTextProperty().bind(name.textProperty());
                     compRegions.add(compRegion);
                     line.getChildren().add(compRegion);
                     HBox.setHgrow(compRegion, Priority.ALWAYS);
@@ -170,5 +173,10 @@ public class OptionsComp extends Comp<CompStructure<Pane>> {
         return entries;
     }
 
-    public record Entry(String key, ObservableValue<String> description,  String longDescriptionSource, ObservableValue<String> name, Comp<?> comp) {}
+    public record Entry(
+            String key,
+            ObservableValue<String> description,
+            String longDescriptionSource,
+            ObservableValue<String> name,
+            Comp<?> comp) {}
 }

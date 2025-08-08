@@ -2,7 +2,9 @@ package io.xpipe.core.process;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.xpipe.core.charsetter.NewLine;
+import io.xpipe.core.charsetter.StreamCharset;
 import io.xpipe.core.store.FileSystem;
+import io.xpipe.core.util.SecretValue;
 
 import java.nio.charset.Charset;
 import java.util.List;
@@ -13,11 +15,31 @@ import java.util.stream.Stream;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 public interface ShellDialect {
 
-    CommandControl directoryExists(ShellControl shellControl,  String directory);
+    static String flatten(List<String> command) {
+        return command.stream()
+                .map(s -> s.contains(" ")
+                                && !(s.startsWith("\"") && s.endsWith("\""))
+                                && !(s.startsWith("'") && s.endsWith("'"))
+                        ? "\"" + s + "\""
+                        : s)
+                .collect(Collectors.joining(" "));
+    }
 
-    CommandControl normalizeDirectory(ShellControl shellControl,  String directory);
+    CommandControl queryVersion(ShellControl shellControl);
+
+    CommandControl prepareTempDirectory(ShellControl shellControl, String directory);
+
+    String initFileName(ShellControl sc) throws Exception;
+
+    CommandControl directoryExists(ShellControl shellControl, String directory);
+
+    CommandControl evaluateExpression(ShellControl shellControl, String s);
+
+    CommandControl resolveDirectory(ShellControl shellControl, String directory);
 
     String fileArgument(String s);
+
+    String executeWithNoInitFiles(ShellDialect parentDialect, String file);
 
     void prepareDumbTerminalCommands(ShellControl sc) throws Exception;
 
@@ -27,21 +49,23 @@ public interface ShellDialect {
         return null;
     }
 
+    String changeTitleCommand(String newTitle);
+
     default String applyProfileFilesCommand() {
         return null;
     }
 
     CommandControl createStreamFileWriteCommand(ShellControl shellControl, String file);
 
-    default String getCdCommand(String directory){
+    default String getCdCommand(String directory) {
         return "cd \"" + directory + "\"";
     }
 
-    default String getPushdCommand(String directory){
+    default String getPushdCommand(String directory) {
         return "pushd \"" + directory + "\"";
     }
 
-    default String getPopdCommand(){
+    default String getPopdCommand() {
         return "popd";
     }
 
@@ -56,16 +80,6 @@ public interface ShellDialect {
     String getPauseCommand();
 
     String prepareScriptContent(String content);
-
-    default String flatten(List<String> command) {
-        return command.stream()
-                .map(s -> s.contains(" ")
-                                && !(s.startsWith("\"") && s.endsWith("\""))
-                                && !(s.startsWith("'") && s.endsWith("'"))
-                        ? "\"" + s + "\""
-                        : s)
-                .collect(Collectors.joining(" "));
-    }
 
     default String getExitCommand() {
         return "exit";
@@ -87,9 +101,13 @@ public interface ShellDialect {
 
     String getSetEnvironmentVariableCommand(String variable, String value);
 
+    String setSecretEnvironmentVariableCommand(ShellControl sc, String variable, SecretValue value) throws Exception;
+
     String getEchoCommand(String s, boolean toErrorStream);
 
     String getPrintVariableCommand(String name);
+
+    String getUsernameVariableName();
 
     String getPrintExitCodeCommand(String prefix);
 
@@ -99,9 +117,13 @@ public interface ShellDialect {
 
     String getOpenCommand();
 
-    String prepareTerminalInitFileOpenCommand(ShellDialect parentDialect, ShellControl sc, String file) throws Exception;
+    default String getLoginOpenCommand() {
+        return getOpenCommand();
+    }
 
-    String runScript(String file);
+    String prepareTerminalInitFileOpenCommand(ShellDialect parentDialect, ShellControl sc, String file);
+
+    String runScript(ShellControl parent, String file);
 
     String sourceScript(String file);
 
@@ -113,6 +135,8 @@ public interface ShellDialect {
 
     String getPrintWorkingDirectoryCommand();
 
+    StreamCharset getScriptCharset();
+
     String getFileCopyCommand(String oldFile, String newFile);
 
     String getFileMoveCommand(String oldFile, String newFile);
@@ -123,15 +147,19 @@ public interface ShellDialect {
 
     CommandControl createTextFileWriteCommand(ShellControl parent, String content, String file);
 
+    CommandControl createScriptTextFileWriteCommand(ShellControl parent, String content, String file);
+
     String getFileDeleteCommand(String file);
 
     CommandControl createFileExistsCommand(ShellControl sc, String file);
+
+    CommandControl symbolicLink(ShellControl sc, String linkFile, String targetFile);
 
     String getFileTouchCommand(String file);
 
     String getWhichCommand(String executable);
 
-    Charset determineCharset(ShellControl control) throws Exception;
+    Charset determineCharset(ShellControl control);
 
     NewLine getNewLine();
 

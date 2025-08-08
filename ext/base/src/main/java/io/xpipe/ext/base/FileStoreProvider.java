@@ -1,6 +1,6 @@
 package io.xpipe.ext.base;
 
-import io.xpipe.app.comp.source.store.DsStreamStoreChoiceComp;
+import io.xpipe.app.comp.store.DsStreamStoreChoiceComp;
 import io.xpipe.app.ext.DataStoreProvider;
 import io.xpipe.app.ext.GuiDialog;
 import io.xpipe.app.util.DataStoreFormatter;
@@ -17,20 +17,19 @@ import java.util.List;
 public class FileStoreProvider implements DataStoreProvider {
 
     @Override
-    public boolean shouldShow() {
+    public boolean canManuallyCreate() {
         return false;
     }
 
     @Override
     public GuiDialog guiDialog(Property<DataStore> store) {
         var val = new SimpleValidator();
-        var comp = new DsStreamStoreChoiceComp(
-                store, null, false, false, DsStreamStoreChoiceComp.Mode.WRITE);
+        var comp = new DsStreamStoreChoiceComp(store, null, false, false, DsStreamStoreChoiceComp.Mode.WRITE);
         return new GuiDialog(comp, val);
     }
 
     @Override
-    public String queryInformationString(DataStore store, int length) throws Exception {
+    public String queryInformationString(DataStore store, int length) {
         return getDisplayName();
     }
 
@@ -53,7 +52,7 @@ public class FileStoreProvider implements DataStoreProvider {
         }
 
         var rest = Math.max(0, length - 3);
-        return input.substring(0, rest / 2) + "..." + input.substring(input.length() - (rest / 2), input.length());
+        return input.substring(0, rest / 2) + "..." + input.substring(input.length() - (rest / 2));
     }
 
     @Override
