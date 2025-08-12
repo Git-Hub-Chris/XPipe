@@ -13,6 +13,14 @@
 -fx-padding: 1.2em;
 }
 
+.layout {
+-fx-background-color: -color-bg-default;
+}
+
+.text {
+   -fx-font-smoothing-type: gray;
+}
+
 .radio-button {
 -fx-background-color:transparent;
 }

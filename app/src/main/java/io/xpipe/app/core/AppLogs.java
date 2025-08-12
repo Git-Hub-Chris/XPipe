@@ -43,6 +43,8 @@ public class AppLogs {
     private final PrintStream originalSysOut;
     private final PrintStream originalSysErr;
     private final Path logDir;
+
+    @Getter
     private final boolean writeToSysout;
 
     @Getter
@@ -372,7 +374,7 @@ public class AppLogs {
             TrackEvent.builder()
                     .category(name)
                     .type(level.toString().toLowerCase())
-                    .message(formatted)
+                    .message(msg)
                     .build()
                     .handle();
         }

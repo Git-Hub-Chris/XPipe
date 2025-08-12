@@ -25,6 +25,8 @@ public interface ShellDialect {
                 .collect(Collectors.joining(" "));
     }
 
+    CommandControl queryVersion(ShellControl shellControl);
+
     CommandControl prepareTempDirectory(ShellControl shellControl, String directory);
 
     String initFileName(ShellControl sc) throws Exception;
@@ -114,6 +116,10 @@ public interface ShellDialect {
     }
 
     String getOpenCommand();
+
+    default String getLoginOpenCommand() {
+        return getOpenCommand();
+    }
 
     String prepareTerminalInitFileOpenCommand(ShellDialect parentDialect, ShellControl sc, String file);
 
