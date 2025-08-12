@@ -43,8 +43,8 @@ dependencies {
     implementation 'net.java.dev.jna:jna-platform-jpms:5.17.0'
 
     implementation group: 'org.kordamp.ikonli', name: 'ikonli-material2-pack', version: "12.4.0"
-    implementation group: 'org.kordamp.ikonli', name: 'ikonli-materialdesign2-pack', version: "12.2.0"
-    implementation group: 'org.kordamp.ikonli', name: 'ikonli-javafx', version: "12.2.0"
+    implementation group: 'org.kordamp.ikonli', name: 'ikonli-materialdesign2-pack', version: "12.4.0"
+    implementation group: 'org.kordamp.ikonli', name: 'ikonli-javafx', version: "12.4.0"
     implementation group: 'org.kordamp.ikonli', name: 'ikonli-material-pack', version: "12.4.0"
     implementation group: 'org.kordamp.ikonli', name: 'ikonli-feather-pack', version: "12.4.0"
     implementation (name: 'preferencesfx-core-11.15.0')
