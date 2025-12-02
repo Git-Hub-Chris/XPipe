@@ -56,7 +56,7 @@ dependencies {
     implementation 'io.xpipe:modulefs:0.1.7'
     implementation 'com.jfoenix:jfoenix:9.0.10'
     implementation 'org.controlsfx:controlsfx:11.2.2'
-    implementation 'net.synedra:validatorfx:0.6.1'
+    implementation 'net.synedra:validatorfx:0.6.3'
     implementation ('io.github.mkpaz:atlantafx-base:2.1.0') {
         exclude group: 'org.openjfx', module: 'javafx-base'
         exclude group: 'org.openjfx', module: 'javafx-controls'
