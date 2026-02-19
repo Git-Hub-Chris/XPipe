@@ -63,7 +63,7 @@ dependencies {
     }
     implementation name: 'jSystemThemeDetector-3.8'
     implementation group: 'com.github.oshi', name: 'oshi-core-java11', version: '6.9.3'
-    implementation 'org.jetbrains:annotations:26.0.2-1'
+    implementation 'org.jetbrains:annotations:26.1.0'
     implementation ('de.jangassen:jfa:1.2.0') {
         exclude group: 'net.java.dev.jna', module: 'jna'
     }
