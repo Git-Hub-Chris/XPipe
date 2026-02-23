@@ -1,14 +1,1 @@
-rootProject.name = 'xpipe'
-
-include 'api'
-include 'core'
-include 'beacon'
-
-for (def ext : file("ext").list()) {
-    include "$ext"
-    project(":$ext").projectDir = file("ext/$ext")
-}
-
 include 'app'
-include 'cli'
-include 'dist'
