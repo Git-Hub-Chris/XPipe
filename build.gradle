@@ -1,4 +1,8 @@
 // Root project with 'app' subproject
+plugins {
+    id 'java' apply false
+}
+
 subprojects {
     apply plugin: 'java'
     repositories {
