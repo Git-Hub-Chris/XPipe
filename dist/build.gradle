@@ -1,6 +1,6 @@
 
 plugins {
-    id 'org.beryx.jlink' version '4.0.2'
+    id 'org.beryx.jlink' version '4.1.0'
     id "org.moditect.gradleplugin" version "1.0.0-rc3"
     id "org.asciidoctor.jvm.convert" version "4.0.5"
     id 'org.jreleaser' version '1.25.0'
