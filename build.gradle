@@ -3,6 +3,13 @@ plugins {
     id 'java'
 }
 
+group = 'io.xpipe'
+version = rootProject.versionString ?: '1.0.0'
+
+repositories {
+    mavenCentral()
+}
+
 subprojects {
     apply plugin: 'java'
     repositories {
