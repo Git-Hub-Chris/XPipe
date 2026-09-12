@@ -3,12 +3,12 @@ java {
     withSourcesJar()
 }
 
-def repoUrl = !rootProject.isFullRelease ? 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+def repoUrl = (!rootProject.hasProperty('isFullRelease') || !rootProject.isFullRelease) ? 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
         : 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
 def user = project.hasProperty('sonatypeUsername') ? project.property('sonatypeUsername') : System.getenv('SONATYPE_USERNAME')
 def pass = project.hasProperty('sonatypePassword') ? project.property('sonatypePassword') : System.getenv('SONATYPE_PASSWORD')
 
-if (rootProject.isFullRelease) {
+if (rootProject.hasProperty('isFullRelease') && rootProject.isFullRelease) {
     publish.finalizedBy(rootProject.getTasks().getByName('closeAndReleaseRepository'))
 }
 
