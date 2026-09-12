@@ -32,7 +32,7 @@ test {
             " -Dio.xpipe.app.logLevel=trace"
 
     // Use cmd window for tests
-    if (!rootProject.ci && DefaultNativePlatform.currentOperatingSystem.isWindows()) {
+    if ((!rootProject.hasProperty('ci') || !rootProject.ci) && DefaultNativePlatform.currentOperatingSystem.isWindows()) {
         systemProperty "io.xpipe.beacon.customDaemonCommand",
                        "cmd.exe /c start \"\"XPipe Debug\"\" /i \"$rootDir\\gradlew.bat\" --console=plain $daemonCommand"
     }
