@@ -174,7 +174,7 @@ task runAttachedDebugger(type: JavaExec) {
 
 task writeLicenses(type: DefaultTask) {
     doLast {
-        def resourcesDir = new File(sourceSets.main.output.resourcesDir, "io/xpipe/app/resources/third-party")
+        def resourcesDir = file("$buildDir/resources/main/io/xpipe/app/resources/third-party")
         resourcesDir.mkdirs()
         copy {
             from "$rootDir/dist/licenses"
