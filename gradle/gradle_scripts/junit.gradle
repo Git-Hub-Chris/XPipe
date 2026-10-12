@@ -40,6 +40,6 @@ sourceSets {
 //                srcDirs = []
 //            }
 //        }
-        output.resourcesDir("$buildDir/classes/java/test")
+        resources.srcDirs = ["src/test/resources"]
     }
 }
