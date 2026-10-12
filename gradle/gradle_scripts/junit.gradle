@@ -34,12 +34,6 @@ tasks.withType(Test) {
 
 sourceSets {
     test {
-        // With this, the project at least compiles in eclipse (although with disabled tests)
-//        if (System.getProperty('idea.active') == null) {
-//            java {
-//                srcDirs = []
-//            }
-//        }
         resources.srcDirs = ["src/test/resources"]
     }
 }
